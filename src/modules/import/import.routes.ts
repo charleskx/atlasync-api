@@ -18,8 +18,8 @@ export async function importRoutes(app: FastifyInstance) {
     if (!data) throw new AppError('NO_FILE', 400, 'Arquivo não enviado')
 
     const ext = data.filename.split('.').pop()?.toLowerCase()
-    if (!ext || !['xlsx', 'xls', 'csv'].includes(ext)) {
-      throw new AppError('INVALID_FILE_TYPE', 400, 'Formato inválido. Use .xlsx, .xls ou .csv')
+    if (!ext || !['xlsx', 'csv'].includes(ext)) {
+      throw new AppError('INVALID_FILE_TYPE', 400, 'Formato inválido. Use .xlsx ou .csv')
     }
 
     const query = req.query as { mode?: string }

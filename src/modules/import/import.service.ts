@@ -16,7 +16,7 @@ export const importService = {
     const ability = defineAbilityFor({ role: requester.role })
     if (!ability.can('create', 'Partner')) throw new AppError('FORBIDDEN', 403, 'Sem permissão')
 
-    const { rows, errors } = parseSpreadsheet(fileBuffer, fileName)
+    const { rows, errors } = await parseSpreadsheet(fileBuffer, fileName)
 
     if (rows.length === 0) {
       throw new AppError('EMPTY_FILE', 400, 'Planilha vazia ou sem linhas válidas')

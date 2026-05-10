@@ -1,12 +1,11 @@
 import { and, eq, isNull } from 'drizzle-orm'
-import XLSX from 'xlsx'
+import ExcelJS from 'exceljs'
 import { db } from '../../config/database'
 import { partnerColumns, partnerValues, partners } from '../../db/schema'
 import { AppError } from '../../shared/errors'
 import { defineAbilityFor } from '../../shared/permissions'
 import type { ExportInput } from './export.schema'
 
-// Colunas fixas disponíveis para exportação
 const FIXED_COLUMNS: Record<string, string> = {
   name: 'Nome',
   address: 'Endereço',
@@ -20,6 +19,13 @@ const FIXED_COLUMNS: Record<string, string> = {
 }
 
 type Requester = { id: string; role: string; tenantId: string }
+
+function escapeCsvField(value: string): string {
+  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+    return `"${value.replace(/"/g, '""')}"`
+  }
+  return value
+}
 
 export const exportService = {
   async getAvailableColumns(requester: Requester) {
@@ -47,7 +53,6 @@ export const exportService = {
     const ability = defineAbilityFor({ role: requester.role })
     if (!ability.can('read', 'Partner')) throw new AppError('FORBIDDEN', 403, 'Sem permissão')
 
-    // Buscar todos os parceiros ativos com valores dinâmicos
     const rows = await db
       .select({
         id: partners.id,
@@ -64,9 +69,7 @@ export const exportService = {
       .from(partners)
       .where(and(eq(partners.tenantId, requester.tenantId), isNull(partners.deletedAt)))
 
-    // Buscar valores dinâmicos se houver colunas dinâmicas selecionadas
     const dynamicKeys = input.columns.filter(c => !FIXED_COLUMNS[c])
-
     const dynamicMap = new Map<string, Record<string, string>>()
 
     if (dynamicKeys.length > 0) {
@@ -87,43 +90,42 @@ export const exportService = {
       }
     }
 
-    // Montar linhas da planilha com as colunas selecionadas
-    const sheetRows = rows.map(partner => {
-      const row: Record<string, string> = {}
-      const dyn = dynamicMap.get(partner.id) ?? {}
-
-      for (const col of input.columns) {
-        if (col in FIXED_COLUMNS) {
-          const val = (partner as Record<string, unknown>)[col]
-          row[FIXED_COLUMNS[col]] =
-            val instanceof Date ? val.toISOString().split('T')[0] : String(val ?? '')
-        } else {
-          const dynCol = dynamicKeys.find(k => k === col)
-          row[col] = dynCol ? (dyn[col] ?? '') : ''
-        }
-      }
-
-      return row
-    })
-
     const headers = input.columns.map(c => FIXED_COLUMNS[c] ?? c)
 
+    const sheetRows = rows.map(partner => {
+      const dyn = dynamicMap.get(partner.id) ?? {}
+      return input.columns.map(col => {
+        if (col in FIXED_COLUMNS) {
+          const val = (partner as Record<string, unknown>)[col]
+          return val instanceof Date ? val.toISOString().split('T')[0] : String(val ?? '')
+        }
+        return dyn[col] ?? ''
+      })
+    })
+
     if (input.format === 'csv') {
-      const wb = XLSX.utils.book_new()
-      const ws = XLSX.utils.json_to_sheet(sheetRows, { header: headers })
-      XLSX.utils.book_append_sheet(wb, ws, 'Parceiros')
-      return {
-        buffer: XLSX.write(wb, { type: 'buffer', bookType: 'csv' }) as Buffer,
-        contentType: 'text/csv',
-        extension: 'csv',
-      }
+      const lines = [
+        headers.map(escapeCsvField).join(','),
+        ...sheetRows.map(row => row.map(escapeCsvField).join(',')),
+      ]
+      // BOM para compatibilidade com Excel ao abrir CSV
+      const buffer = Buffer.concat([
+        Buffer.from('﻿', 'utf-8'),
+        Buffer.from(lines.join('\r\n'), 'utf-8'),
+      ])
+      return { buffer, contentType: 'text/csv', extension: 'csv' }
     }
 
-    const wb = XLSX.utils.book_new()
-    const ws = XLSX.utils.json_to_sheet(sheetRows, { header: headers })
-    XLSX.utils.book_append_sheet(wb, ws, 'Parceiros')
+    const wb = new ExcelJS.Workbook()
+    const ws = wb.addWorksheet('Parceiros')
+    ws.addRow(headers)
+    for (const row of sheetRows) {
+      ws.addRow(row)
+    }
+
+    const buffer = Buffer.from(await wb.xlsx.writeBuffer())
     return {
-      buffer: XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) as Buffer,
+      buffer,
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       extension: 'xlsx',
     }
