@@ -14,7 +14,8 @@
     "db:studio": "drizzle-kit studio",
     "lint": "biome lint .",
     "format": "biome format --write .",
-    "check": "biome check --write ."
+    "check": "biome check --write .",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "@casl/ability": "^6.7.1",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
+    "@faker-js/faker": "^10.4.0",
     "@types/node": "^22.0.0",
     "@types/pg": "^8.11.10",
     "@types/qrcode": "^1.5.6",
