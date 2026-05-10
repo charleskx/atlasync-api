@@ -6,8 +6,10 @@ import rateLimit from '@fastify/rate-limit'
 import Fastify from 'fastify'
 import { env } from './config/env'
 import { redis } from './config/redis'
+import { adminRoutes } from './modules/admin/admin.routes'
 import { authRoutes } from './modules/auth/auth.routes'
 import { billingRoutes } from './modules/billing/billing.routes'
+import { exportRoutes } from './modules/export/export.routes'
 import { importRoutes } from './modules/import/import.routes'
 import { mapRoutes } from './modules/map/map.routes'
 import { partnerRoutes } from './modules/partner/partner.routes'
@@ -80,6 +82,8 @@ export async function buildApp() {
   await app.register(importRoutes, { prefix: '/import' })
   await app.register(mapRoutes, { prefix: '/maps' })
   await app.register(tenantRoutes, { prefix: '/tenant' })
+  await app.register(exportRoutes, { prefix: '/export' })
+  await app.register(adminRoutes, { prefix: '/admin' })
 
   return app
 }

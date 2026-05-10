@@ -1,12 +1,22 @@
 import { eq } from 'drizzle-orm'
 import type { FastifyReply, FastifyRequest } from 'fastify'
 import { db } from '../config/database'
-import { subscriptions } from '../db/schema'
+import { subscriptions, tenants } from '../db/schema'
 import { AppError } from '../shared/errors'
 
 const ACTIVE_STATUSES = ['trialing', 'active']
 
 export async function subscriptionGuard(req: FastifyRequest, _reply: FastifyReply): Promise<void> {
+  const [tenant] = await db
+    .select({ active: tenants.active })
+    .from(tenants)
+    .where(eq(tenants.id, req.tenantId))
+    .limit(1)
+
+  if (!tenant?.active) {
+    throw new AppError('TENANT_BLOCKED', 403, 'Conta suspensa. Entre em contato com o suporte.')
+  }
+
   const [sub] = await db
     .select({ status: subscriptions.status })
     .from(subscriptions)

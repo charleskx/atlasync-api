@@ -1,0 +1,33 @@
+import type { FastifyInstance } from 'fastify'
+import { authenticate } from '../../middlewares/authenticate'
+import { adminService } from './admin.service'
+
+export async function adminRoutes(app: FastifyInstance) {
+  // Todas as rotas exigem autenticação — verificação de super_admin no service
+  app.addHook('preHandler', authenticate)
+
+  app.get('/tenants', async req => {
+    return adminService.listTenants({ role: req.userRole })
+  })
+
+  app.get('/tenants/:id', async req => {
+    const { id } = req.params as { id: string }
+    return adminService.getTenant(id, { role: req.userRole })
+  })
+
+  app.patch('/tenants/:id/block', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    await adminService.blockTenant(id, { role: req.userRole })
+    return reply.status(204).send()
+  })
+
+  app.patch('/tenants/:id/unblock', async (req, reply) => {
+    const { id } = req.params as { id: string }
+    await adminService.unblockTenant(id, { role: req.userRole })
+    return reply.status(204).send()
+  })
+
+  app.get('/metrics', async req => {
+    return adminService.getMetrics({ role: req.userRole })
+  })
+}
