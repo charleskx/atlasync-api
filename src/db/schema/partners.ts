@@ -29,6 +29,8 @@ export const partners = pgTable(
     // dashboard | import
     source: varchar('source', { length: 20 }).default('dashboard'),
     externalKey: varchar('external_key', { length: 300 }),
+    city: varchar('city', { length: 200 }),
+    state: varchar('state', { length: 100 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),

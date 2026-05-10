@@ -9,7 +9,9 @@ import { redis } from './config/redis'
 import { authRoutes } from './modules/auth/auth.routes'
 import { billingRoutes } from './modules/billing/billing.routes'
 import { importRoutes } from './modules/import/import.routes'
+import { mapRoutes } from './modules/map/map.routes'
 import { partnerRoutes } from './modules/partner/partner.routes'
+import { tenantRoutes } from './modules/tenant/tenant.routes'
 import { userRoutes } from './modules/user/user.routes'
 import { AppError } from './shared/errors'
 
@@ -76,6 +78,8 @@ export async function buildApp() {
   await app.register(billingRoutes, { prefix: '/billing' })
   await app.register(partnerRoutes, { prefix: '/partners' })
   await app.register(importRoutes, { prefix: '/import' })
+  await app.register(mapRoutes, { prefix: '/maps' })
+  await app.register(tenantRoutes, { prefix: '/tenant' })
 
   return app
 }

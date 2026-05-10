@@ -104,7 +104,7 @@ export const partnerRepository = {
 
   async updateGeocode(
     id: string,
-    geo: { lat: number; lng: number } | null,
+    geo: { lat: number; lng: number; city?: string; state?: string } | null,
     status: 'done' | 'failed',
   ) {
     await db
@@ -112,6 +112,8 @@ export const partnerRepository = {
       .set({
         lat: geo?.lat,
         lng: geo?.lng,
+        city: geo?.city,
+        state: geo?.state,
         geocodedAt: new Date(),
         geocodeStatus: status,
         updatedAt: new Date(),
