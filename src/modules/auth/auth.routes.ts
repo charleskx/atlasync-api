@@ -1,5 +1,6 @@
 import dayjs from 'dayjs'
 import type { FastifyInstance } from 'fastify'
+import { authenticate } from '../../middlewares/authenticate'
 import { AppError } from '../../shared/errors'
 import { generateToken } from '../../shared/utils'
 import { authRepository } from './auth.repository'
@@ -10,6 +11,8 @@ import {
   refreshSchema,
   registerSchema,
   resetPasswordSchema,
+  totpLoginSchema,
+  totpVerifySchema,
   verifyEmailSchema,
 } from './auth.schema'
 import { authService } from './auth.service'
@@ -38,6 +41,13 @@ export async function authRoutes(app: FastifyInstance) {
       if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)
 
       const result = await authService.login(body.data)
+
+      if (result.requiresTwoFactor) {
+        return { requiresTwoFactor: true, tempToken: result.tempToken }
+      }
+
+      if (!result.user) throw new AppError('INTERNAL_ERROR', 500, 'Erro inesperado no login')
+
       const accessToken = await reply.jwtSign({
         sub: result.user.id,
         tenantId: result.user.tenantId,
@@ -45,9 +55,44 @@ export async function authRoutes(app: FastifyInstance) {
         name: result.user.name,
       })
 
-      return { accessToken, refreshToken: result.refreshToken }
+      return { requiresTwoFactor: false, accessToken, refreshToken: result.refreshToken }
     },
   )
+
+  app.post('/2fa/login', async (req, reply) => {
+    const body = totpLoginSchema.safeParse(req.body)
+    if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)
+
+    const result = await authService.loginWithTotp(body.data.tempToken, body.data.code)
+    const accessToken = await reply.jwtSign({
+      sub: result.user.id,
+      tenantId: result.user.tenantId,
+      role: result.user.role,
+      name: result.user.name,
+    })
+
+    return { accessToken, refreshToken: result.refreshToken }
+  })
+
+  app.post('/2fa/setup', { preHandler: [authenticate] }, async req => {
+    return authService.setupTotp(req.userId)
+  })
+
+  app.post('/2fa/verify', { preHandler: [authenticate] }, async req => {
+    const body = totpVerifySchema.safeParse(req.body)
+    if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)
+
+    await authService.verifyAndEnableTotp(req.userId, body.data.code)
+    return { success: true }
+  })
+
+  app.delete('/2fa', { preHandler: [authenticate] }, async req => {
+    const body = totpVerifySchema.safeParse(req.body)
+    if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)
+
+    await authService.disableTotp(req.userId, body.data.code)
+    return { success: true }
+  })
 
   app.post('/refresh', async (req, reply) => {
     const body = refreshSchema.safeParse(req.body)

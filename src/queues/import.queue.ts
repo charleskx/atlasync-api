@@ -8,6 +8,7 @@ export type ImportJobPayload = {
   userId: string
   fileName: string
   rows: ParsedRow[]
+  mode: 'full' | 'incremental'
 }
 
 export const importQueue = new Queue<ImportJobPayload>('import', {

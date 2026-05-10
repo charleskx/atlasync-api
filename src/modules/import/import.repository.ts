@@ -1,10 +1,12 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { db } from '../../config/database'
 import { importJobs } from '../../db/schema'
 
 type JobUpdate = {
   status?: string
+  mode?: string
   totalRows?: number
+  processedRows?: number
   created?: number
   updated?: number
   removed?: number
@@ -15,10 +17,10 @@ type JobUpdate = {
 }
 
 export const importRepository = {
-  async create(tenantId: string, userId: string, fileName: string) {
+  async create(tenantId: string, userId: string, fileName: string, mode: 'full' | 'incremental') {
     const [job] = await db
       .insert(importJobs)
-      .values({ tenantId, userId, fileName, status: 'queued' })
+      .values({ tenantId, userId, fileName, status: 'queued', mode })
       .returning()
     return job
   },

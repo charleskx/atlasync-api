@@ -5,15 +5,19 @@ import type { ImportJobPayload } from '../../queues/import.queue'
 import { partnerRepository } from '../partner/partner.repository'
 import { importRepository } from './import.repository'
 
+const PROGRESS_BATCH = 10
+
 export function createImportWorker() {
   return new Worker<ImportJobPayload>(
     'import',
     async job => {
-      const { jobId, tenantId, rows } = job.data
+      const { jobId, tenantId, rows, mode } = job.data
 
       await importRepository.update(jobId, {
         status: 'processing',
+        mode,
         totalRows: rows.length,
+        processedRows: 0,
         startedAt: new Date(),
       })
 
@@ -67,10 +71,16 @@ export function createImportWorker() {
           failed++
           errorLog.push({ row: i + 2, message: String(err) })
         }
+
+        if ((i + 1) % PROGRESS_BATCH === 0 || i === rows.length - 1) {
+          await importRepository.update(jobId, { processedRows: i + 1 })
+        }
       }
 
-      // Soft-delete imported partners not present in this sheet
-      const removed = await softDeleteStale(tenantId, processedKeys)
+      let removed = 0
+      if (mode !== 'incremental') {
+        removed = await softDeleteStale(tenantId, processedKeys)
+      }
 
       await importRepository.update(jobId, {
         status: 'done',
@@ -78,6 +88,7 @@ export function createImportWorker() {
         updated,
         removed,
         failed,
+        processedRows: rows.length,
         errorLog: errorLog.length > 0 ? errorLog : null,
         finishedAt: new Date(),
       })

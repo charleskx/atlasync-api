@@ -19,6 +19,8 @@ export const users = pgTable(
     emailVerifyExpiresAt: timestamp('email_verify_expires_at'),
     resetPasswordToken: varchar('reset_password_token', { length: 200 }),
     resetPasswordExpiresAt: timestamp('reset_password_expires_at'),
+    totpSecret: varchar('totp_secret', { length: 200 }),
+    totpEnabled: boolean('totp_enabled').default(false).notNull(),
     invitedBy: uuid('invited_by').references((): AnyPgColumn => users.id),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

@@ -1,6 +1,8 @@
 import argon2 from 'argon2'
 import dayjs from 'dayjs'
 import { eq } from 'drizzle-orm'
+import { generateSecret, generateURI, verifySync } from 'otplib'
+import QRCode from 'qrcode'
 import { db } from '../../config/database'
 import { env } from '../../config/env'
 import { refreshTokens, subscriptions, tenantSettings, tenants, users } from '../../db/schema'
@@ -14,6 +16,9 @@ import type {
   RegisterInput,
   ResetPasswordInput,
 } from './auth.schema'
+
+// temp tokens armazenados em memória — suficiente para instância única; usar Redis em cluster
+const tempTokens = new Map<string, { userId: string; expiresAt: Date }>()
 
 export const authService = {
   async register({ tenantName, name, email, password }: RegisterInput) {
@@ -86,6 +91,15 @@ export const authService = {
     const valid = await argon2.verify(user.passwordHash, password)
     if (!valid) throw new AppError('INVALID_CREDENTIALS', 401, 'Credenciais inválidas')
 
+    if (user.totpEnabled && user.totpSecret) {
+      const tempToken = generateToken(32)
+      tempTokens.set(tempToken, {
+        userId: user.id,
+        expiresAt: dayjs().add(5, 'minute').toDate(),
+      })
+      return { requiresTwoFactor: true, tempToken }
+    }
+
     const refreshTokenValue = generateToken(64)
 
     await authRepository.createRefreshToken({
@@ -95,7 +109,76 @@ export const authService = {
       expiresAt: dayjs().add(30, 'day').toDate(),
     })
 
+    return { requiresTwoFactor: false, user, refreshToken: refreshTokenValue }
+  },
+
+  async loginWithTotp(tempToken: string, code: string) {
+    const entry = tempTokens.get(tempToken)
+    if (!entry || dayjs().isAfter(dayjs(entry.expiresAt))) {
+      throw new AppError('INVALID_TOKEN', 401, 'Token temporário inválido ou expirado')
+    }
+
+    const user = await authRepository.findUserById(entry.userId)
+    if (!user || !user.totpSecret)
+      throw new AppError('INVALID_TOKEN', 401, 'Token temporário inválido')
+
+    const result = verifySync({ token: code, secret: user.totpSecret })
+    if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
+
+    tempTokens.delete(tempToken)
+
+    const refreshTokenValue = generateToken(64)
+    await authRepository.createRefreshToken({
+      userId: user.id,
+      tenantId: user.tenantId,
+      token: refreshTokenValue,
+      expiresAt: dayjs().add(30, 'day').toDate(),
+    })
+
     return { user, refreshToken: refreshTokenValue }
+  },
+
+  async setupTotp(userId: string) {
+    const user = await authRepository.findUserById(userId)
+    if (!user) throw new AppError('USER_NOT_FOUND', 404, 'Usuário não encontrado')
+    if (user.totpEnabled) throw new AppError('TOTP_ALREADY_ENABLED', 409, '2FA já está ativado')
+
+    const secret = generateSecret()
+    const otpauth = generateURI({ issuer: 'Atlasync', label: user.email, secret })
+    const qrcode = await QRCode.toDataURL(otpauth)
+
+    await authRepository.updateUser(userId, { totpSecret: secret, updatedAt: new Date() })
+
+    return { secret, qrcode }
+  },
+
+  async verifyAndEnableTotp(userId: string, code: string) {
+    const user = await authRepository.findUserById(userId)
+    if (!user || !user.totpSecret) {
+      throw new AppError('TOTP_NOT_SETUP', 400, 'Configure o 2FA primeiro')
+    }
+    if (user.totpEnabled) throw new AppError('TOTP_ALREADY_ENABLED', 409, '2FA já está ativado')
+
+    const result = verifySync({ token: code, secret: user.totpSecret })
+    if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
+
+    await authRepository.updateUser(userId, { totpEnabled: true, updatedAt: new Date() })
+  },
+
+  async disableTotp(userId: string, code: string) {
+    const user = await authRepository.findUserById(userId)
+    if (!user || !user.totpEnabled || !user.totpSecret) {
+      throw new AppError('TOTP_NOT_ENABLED', 400, '2FA não está ativado')
+    }
+
+    const result = verifySync({ token: code, secret: user.totpSecret })
+    if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
+
+    await authRepository.updateUser(userId, {
+      totpSecret: null,
+      totpEnabled: false,
+      updatedAt: new Date(),
+    })
   },
 
   async refresh(token: string) {

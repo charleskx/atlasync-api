@@ -1,14 +1,18 @@
 import { importQueue } from '../../queues/import.queue'
 import { AppError } from '../../shared/errors'
 import { defineAbilityFor } from '../../shared/permissions'
-import type { ParsedRow } from './import.parser'
 import { parseSpreadsheet } from './import.parser'
 import { importRepository } from './import.repository'
 
 type Requester = { id: string; role: string; tenantId: string }
 
 export const importService = {
-  async upload(fileBuffer: Buffer, fileName: string, requester: Requester) {
+  async upload(
+    fileBuffer: Buffer,
+    fileName: string,
+    requester: Requester,
+    mode: 'full' | 'incremental' = 'full',
+  ) {
     const ability = defineAbilityFor({ role: requester.role })
     if (!ability.can('create', 'Partner')) throw new AppError('FORBIDDEN', 403, 'Sem permissão')
 
@@ -18,7 +22,7 @@ export const importService = {
       throw new AppError('EMPTY_FILE', 400, 'Planilha vazia ou sem linhas válidas')
     }
 
-    const job = await importRepository.create(requester.tenantId, requester.id, fileName)
+    const job = await importRepository.create(requester.tenantId, requester.id, fileName, mode)
 
     await importQueue.add('process', {
       jobId: job.id,
@@ -26,6 +30,7 @@ export const importService = {
       userId: requester.id,
       fileName,
       rows,
+      mode,
     })
 
     return {

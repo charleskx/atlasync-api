@@ -12,8 +12,11 @@ export const importJobs = pgTable('import_jobs', {
     .notNull(),
   // queued | processing | done | failed
   status: varchar('status', { length: 20 }).default('queued').notNull(),
+  // full | incremental
+  mode: varchar('mode', { length: 20 }).default('full').notNull(),
   fileName: varchar('file_name', { length: 300 }),
   totalRows: integer('total_rows'),
+  processedRows: integer('processed_rows').default(0),
   created: integer('created').default(0),
   updated: integer('updated').default(0),
   removed: integer('removed').default(0),

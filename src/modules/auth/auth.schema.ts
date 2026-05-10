@@ -35,8 +35,19 @@ export const acceptInviteSchema = z.object({
   password: z.string().min(8),
 })
 
+export const totpVerifySchema = z.object({
+  code: z.string().length(6),
+})
+
+export const totpLoginSchema = z.object({
+  tempToken: z.string().min(1),
+  code: z.string().length(6),
+})
+
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
 export type AcceptInviteInput = z.infer<typeof acceptInviteSchema>
+export type TotpVerifyInput = z.infer<typeof totpVerifySchema>
+export type TotpLoginInput = z.infer<typeof totpLoginSchema>
