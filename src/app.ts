@@ -1,0 +1,81 @@
+import cookie from '@fastify/cookie'
+import cors from '@fastify/cors'
+import fastifyJwt from '@fastify/jwt'
+import multipart from '@fastify/multipart'
+import rateLimit from '@fastify/rate-limit'
+import Fastify from 'fastify'
+import { env } from './config/env'
+import { redis } from './config/redis'
+import { authRoutes } from './modules/auth/auth.routes'
+import { billingRoutes } from './modules/billing/billing.routes'
+import { importRoutes } from './modules/import/import.routes'
+import { partnerRoutes } from './modules/partner/partner.routes'
+import { userRoutes } from './modules/user/user.routes'
+import { AppError } from './shared/errors'
+
+export async function buildApp() {
+  const app = Fastify({
+    logger: {
+      level: 'info',
+      ...(env.NODE_ENV === 'development'
+        ? {
+            transport: {
+              target: 'pino-pretty',
+              options: { colorize: true, translateTime: 'HH:MM:ss Z', ignore: 'pid,hostname' },
+            },
+          }
+        : {}),
+    },
+  })
+
+  await app.register(cors, {
+    origin: env.NODE_ENV === 'development',
+    credentials: true,
+  })
+
+  await app.register(cookie)
+
+  await app.register(fastifyJwt, {
+    secret: env.JWT_SECRET,
+    sign: { expiresIn: '15m' },
+  })
+
+  await app.register(rateLimit, {
+    max: 100,
+    timeWindow: '1 minute',
+    redis,
+  })
+
+  await app.register(multipart, {
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  })
+
+  app.setErrorHandler((error, req, reply) => {
+    if (error instanceof AppError) {
+      return reply.status(error.statusCode).send({ error: error.code, message: error.message })
+    }
+
+    if (
+      error instanceof Error &&
+      'statusCode' in error &&
+      (error as unknown as { statusCode: number }).statusCode === 429
+    ) {
+      return reply
+        .status(429)
+        .send({ error: 'RATE_LIMIT', message: 'Muitas requisições. Tente novamente em instantes.' })
+    }
+
+    req.log.error(error)
+    return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Erro interno do servidor' })
+  })
+
+  app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
+
+  await app.register(authRoutes, { prefix: '/auth' })
+  await app.register(userRoutes, { prefix: '/users' })
+  await app.register(billingRoutes, { prefix: '/billing' })
+  await app.register(partnerRoutes, { prefix: '/partners' })
+  await app.register(importRoutes, { prefix: '/import' })
+
+  return app
+}

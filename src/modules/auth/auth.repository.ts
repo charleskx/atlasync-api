@@ -1,0 +1,82 @@
+import { and, eq, gt, isNull } from 'drizzle-orm'
+import { db } from '../../config/database'
+import { refreshTokens, tenants, users } from '../../db/schema'
+
+export const authRepository = {
+  async findUserByEmail(email: string) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.email, email), isNull(users.deletedAt)))
+      .limit(1)
+    return user ?? null
+  },
+
+  async findUserById(id: string) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.id, id), isNull(users.deletedAt)))
+      .limit(1)
+    return user ?? null
+  },
+
+  async findUserByVerifyToken(token: string) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.emailVerifyToken, token), isNull(users.deletedAt)))
+      .limit(1)
+    return user ?? null
+  },
+
+  async findUserByResetToken(token: string) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(
+        and(
+          eq(users.resetPasswordToken, token),
+          isNull(users.deletedAt),
+          gt(users.resetPasswordExpiresAt, new Date()),
+        ),
+      )
+      .limit(1)
+    return user ?? null
+  },
+
+  async findTenantBySlug(slug: string) {
+    const [tenant] = await db
+      .select({ id: tenants.id })
+      .from(tenants)
+      .where(eq(tenants.slug, slug))
+      .limit(1)
+    return tenant ?? null
+  },
+
+  async updateUser(id: string, data: Partial<typeof users.$inferInsert>) {
+    await db.update(users).set(data).where(eq(users.id, id))
+  },
+
+  async findRefreshToken(token: string) {
+    const [rt] = await db
+      .select()
+      .from(refreshTokens)
+      .where(eq(refreshTokens.token, token))
+      .limit(1)
+    return rt ?? null
+  },
+
+  async createRefreshToken(data: {
+    userId: string
+    tenantId: string
+    token: string
+    expiresAt: Date
+  }) {
+    await db.insert(refreshTokens).values(data)
+  },
+
+  async revokeRefreshToken(id: string) {
+    await db.update(refreshTokens).set({ revokedAt: new Date() }).where(eq(refreshTokens.id, id))
+  },
+}
