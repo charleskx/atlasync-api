@@ -34,8 +34,10 @@ export async function buildApp() {
   })
 
   await app.register(cors, {
-    origin: env.NODE_ENV === 'development',
+    origin: true,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 
   await app.register(cookie)
