@@ -5,6 +5,7 @@ type Actions = 'manage' | 'create' | 'read' | 'update' | 'delete'
 type Subjects =
   | 'all'
   | 'Partner'
+  | 'PinType'
   | 'User'
   | 'Map'
   | 'Import'
@@ -25,6 +26,7 @@ export function defineAbilityFor(user: { role: string }): AppAbility {
 
     case 'owner':
       can('manage', 'Partner')
+      can('manage', 'PinType')
       can('manage', 'User')
       can('manage', 'Map')
       can('manage', 'Import')
@@ -35,6 +37,7 @@ export function defineAbilityFor(user: { role: string }): AppAbility {
 
     case 'admin':
       can('manage', 'Partner')
+      can('manage', 'PinType')
       can('manage', 'Import')
       can('manage', 'Export')
       can('create', 'Map')
@@ -49,6 +52,7 @@ export function defineAbilityFor(user: { role: string }): AppAbility {
     case 'employee':
       can('read', 'Partner')
       can('create', 'Partner')
+      can('read', 'PinType')
       can('read', 'Map')
       break
   }

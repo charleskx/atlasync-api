@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm'
 import ExcelJS from 'exceljs'
 import { db } from '../../config/database'
-import { partnerColumns, partnerValues, partners } from '../../db/schema'
+import { partnerColumns, partnerValues, partners, pinTypes } from '../../db/schema'
 import { AppError } from '../../shared/errors'
 import { defineAbilityFor } from '../../shared/permissions'
 import type { ExportInput } from './export.schema'
@@ -61,12 +61,13 @@ export const exportService = {
         city: partners.city,
         state: partners.state,
         visibility: partners.visibility,
-        pinType: partners.pinType,
         geocodeStatus: partners.geocodeStatus,
         source: partners.source,
         createdAt: partners.createdAt,
+        pinTypeName: pinTypes.name,
       })
       .from(partners)
+      .leftJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
       .where(and(eq(partners.tenantId, requester.tenantId), isNull(partners.deletedAt)))
 
     const dynamicKeys = input.columns.filter(c => !FIXED_COLUMNS[c])
@@ -95,6 +96,7 @@ export const exportService = {
     const sheetRows = rows.map(partner => {
       const dyn = dynamicMap.get(partner.id) ?? {}
       return input.columns.map(col => {
+        if (col === 'pinType') return partner.pinTypeName ?? ''
         if (col in FIXED_COLUMNS) {
           const val = (partner as Record<string, unknown>)[col]
           return val instanceof Date ? val.toISOString().split('T')[0] : String(val ?? '')

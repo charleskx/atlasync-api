@@ -1,36 +1,94 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { db } from '../../config/database'
-import { partnerColumns, partnerValues, partners } from '../../db/schema'
+import { partnerColumns, partnerValues, partners, pinTypes } from '../../db/schema'
 import { slugify } from '../../shared/utils'
 import type { CreatePartnerInput, ListPartnersInput, UpdatePartnerInput } from './partner.schema'
 
 export const partnerRepository = {
   async findAll(tenantId: string, filters: ListPartnersInput) {
-    const { page, limit, visibility, pinType, geocodeStatus } = filters
+    const { page, limit, visibility, pinTypeId, geocodeStatus } = filters
     const offset = (page - 1) * limit
 
     const conditions = [eq(partners.tenantId, tenantId), isNull(partners.deletedAt)]
     if (visibility) conditions.push(eq(partners.visibility, visibility))
-    if (pinType) conditions.push(eq(partners.pinType, pinType))
+    if (pinTypeId) conditions.push(eq(partners.pinTypeId, pinTypeId))
     if (geocodeStatus) conditions.push(eq(partners.geocodeStatus, geocodeStatus))
 
-    const rows = await db.query.partners.findMany({
-      where: and(...conditions),
-      limit,
-      offset,
-      orderBy: (p, { asc }) => [asc(p.name)],
-    })
+    const rows = await db
+      .select({
+        id: partners.id,
+        tenantId: partners.tenantId,
+        name: partners.name,
+        address: partners.address,
+        lat: partners.lat,
+        lng: partners.lng,
+        geocodedAt: partners.geocodedAt,
+        geocodeStatus: partners.geocodeStatus,
+        visibility: partners.visibility,
+        source: partners.source,
+        externalKey: partners.externalKey,
+        city: partners.city,
+        state: partners.state,
+        createdAt: partners.createdAt,
+        updatedAt: partners.updatedAt,
+        deletedAt: partners.deletedAt,
+        pinTypeId: pinTypes.id,
+        pinTypeName: pinTypes.name,
+        pinTypeColor: pinTypes.color,
+      })
+      .from(partners)
+      .leftJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
+      .where(and(...conditions))
+      .orderBy(asc(partners.name))
+      .limit(limit)
+      .offset(offset)
 
-    const withValues = await Promise.all(rows.map(p => attachDynamicValues(p)))
-    return withValues
+    return Promise.all(
+      rows.map(r =>
+        attachDynamicValues({
+          ...r,
+          pinType: r.pinTypeId
+            ? { id: r.pinTypeId, name: r.pinTypeName ?? '', color: r.pinTypeColor ?? '' }
+            : null,
+        }),
+      ),
+    )
   },
 
   async findById(id: string, tenantId: string) {
-    const partner = await db.query.partners.findFirst({
-      where: and(eq(partners.id, id), eq(partners.tenantId, tenantId), isNull(partners.deletedAt)),
+    const [row] = await db
+      .select({
+        id: partners.id,
+        tenantId: partners.tenantId,
+        name: partners.name,
+        address: partners.address,
+        lat: partners.lat,
+        lng: partners.lng,
+        geocodedAt: partners.geocodedAt,
+        geocodeStatus: partners.geocodeStatus,
+        visibility: partners.visibility,
+        source: partners.source,
+        externalKey: partners.externalKey,
+        city: partners.city,
+        state: partners.state,
+        createdAt: partners.createdAt,
+        updatedAt: partners.updatedAt,
+        deletedAt: partners.deletedAt,
+        pinTypeId: pinTypes.id,
+        pinTypeName: pinTypes.name,
+        pinTypeColor: pinTypes.color,
+      })
+      .from(partners)
+      .leftJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
+      .where(and(eq(partners.id, id), eq(partners.tenantId, tenantId), isNull(partners.deletedAt)))
+
+    if (!row) return null
+    return attachDynamicValues({
+      ...row,
+      pinType: row.pinTypeId
+        ? { id: row.pinTypeId, name: row.pinTypeName ?? '', color: row.pinTypeColor ?? '' }
+        : null,
     })
-    if (!partner) return null
-    return attachDynamicValues(partner)
   },
 
   async findByExternalKey(externalKey: string, tenantId: string) {
@@ -59,7 +117,7 @@ export const partnerRepository = {
 
   async create(
     tenantId: string,
-    data: CreatePartnerInput & { source?: string; externalKey?: string },
+    data: CreatePartnerInput & { source?: string; externalKey?: string; pinTypeId?: string | null },
   ) {
     const [partner] = await db
       .insert(partners)
@@ -67,7 +125,7 @@ export const partnerRepository = {
         tenantId,
         name: data.name,
         address: data.address,
-        pinType: data.pinType,
+        pinTypeId: data.pinTypeId ?? null,
         visibility: data.visibility,
         source: data.source ?? 'dashboard',
         externalKey: data.externalKey,
@@ -82,11 +140,15 @@ export const partnerRepository = {
     return partner
   },
 
-  async update(id: string, tenantId: string, data: UpdatePartnerInput) {
+  async update(
+    id: string,
+    tenantId: string,
+    data: UpdatePartnerInput & { pinTypeId?: string | null },
+  ) {
     const updates: Partial<typeof partners.$inferInsert> = { updatedAt: new Date() }
     if (data.name !== undefined) updates.name = data.name
     if (data.address !== undefined) updates.address = data.address
-    if (data.pinType !== undefined) updates.pinType = data.pinType
+    if ('pinTypeId' in data) updates.pinTypeId = data.pinTypeId ?? null
     if (data.visibility !== undefined) updates.visibility = data.visibility
 
     const [updated] = await db
@@ -142,7 +204,6 @@ export const partnerRepository = {
         )
       return
     }
-    // Delete imported partners whose external key is NOT in the current sheet
     await db.execute(
       sql`UPDATE partners SET deleted_at = NOW(), updated_at = NOW()
           WHERE tenant_id = ${tenantId}
@@ -163,22 +224,35 @@ export const partnerRepository = {
   },
 }
 
-type Partner = typeof partners.$inferSelect
+type PartnerRow = {
+  id: string
+  tenantId: string
+  name: string
+  address: string
+  lat: number | null
+  lng: number | null
+  geocodedAt: Date | null
+  geocodeStatus: string | null
+  visibility: string
+  source: string | null
+  externalKey: string | null
+  city: string | null
+  state: string | null
+  createdAt: Date
+  updatedAt: Date
+  deletedAt: Date | null
+  pinType: { id: string; name: string; color: string } | null
+}
 
-async function attachDynamicValues(partner: Partner) {
+async function attachDynamicValues(partner: PartnerRow) {
   const rows = await db
-    .select({
-      key: partnerColumns.key,
-      value: partnerValues.value,
-    })
+    .select({ key: partnerColumns.key, value: partnerValues.value })
     .from(partnerValues)
     .innerJoin(partnerColumns, eq(partnerColumns.id, partnerValues.columnId))
     .where(eq(partnerValues.partnerId, partner.id))
 
   const dynamic: Record<string, string | null> = {}
-  for (const row of rows) {
-    dynamic[row.key] = row.value ?? null
-  }
+  for (const row of rows) dynamic[row.key] = row.value ?? null
 
   return { ...partner, dynamicValues: dynamic }
 }

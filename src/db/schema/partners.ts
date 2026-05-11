@@ -7,6 +7,7 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core'
+import { pinTypes } from './pin_types'
 import { tenants } from './tenants'
 
 export const partners = pgTable(
@@ -23,7 +24,7 @@ export const partners = pgTable(
     geocodedAt: timestamp('geocoded_at'),
     // pending | done | failed
     geocodeStatus: varchar('geocode_status', { length: 20 }).default('pending'),
-    pinType: varchar('pin_type', { length: 80 }),
+    pinTypeId: uuid('pin_type_id').references(() => pinTypes.id),
     // public | internal
     visibility: varchar('visibility', { length: 20 }).default('public').notNull(),
     // dashboard | import
@@ -40,5 +41,6 @@ export const partners = pgTable(
     externalKeyIdx: index('partners_extkey_idx').on(t.tenantId, t.externalKey),
     latLngIdx: index('partners_latlng_idx').on(t.lat, t.lng),
     visibilityIdx: index('partners_visibility_idx').on(t.tenantId, t.visibility),
+    pinTypeIdx: index('partners_pin_type_idx').on(t.pinTypeId),
   }),
 )

@@ -1,4 +1,5 @@
 export * from './tenants'
+export * from './pin_types'
 export * from './users'
 export * from './subscriptions'
 export * from './refresh_tokens'

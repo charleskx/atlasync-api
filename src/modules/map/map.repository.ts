@@ -1,6 +1,6 @@
 import { and, eq, isNotNull, isNull } from 'drizzle-orm'
 import { db } from '../../config/database'
-import { maps, partners } from '../../db/schema'
+import { maps, partners, pinTypes } from '../../db/schema'
 import type { MapPinsQuery } from './map.schema'
 
 export const mapRepository = {
@@ -75,23 +75,33 @@ export const mapRepository = {
     if (filters.city) conditions.push(eq(partners.city, filters.city))
     if (filters.state) conditions.push(eq(partners.state, filters.state))
     if (filters.visibility) conditions.push(eq(partners.visibility, filters.visibility))
-    if (filters.pinType) conditions.push(eq(partners.pinType, filters.pinType))
+    if (filters.pinTypeId) conditions.push(eq(partners.pinTypeId, filters.pinTypeId))
     if (filters.geocodeStatus) conditions.push(eq(partners.geocodeStatus, filters.geocodeStatus))
 
-    return db.query.partners.findMany({
-      where: and(...conditions),
-      columns: {
-        id: true,
-        name: true,
-        address: true,
-        lat: true,
-        lng: true,
-        pinType: true,
-        visibility: true,
-        city: true,
-        state: true,
-      },
-    })
+    const rows = await db
+      .select({
+        id: partners.id,
+        name: partners.name,
+        address: partners.address,
+        lat: partners.lat,
+        lng: partners.lng,
+        visibility: partners.visibility,
+        city: partners.city,
+        state: partners.state,
+        pinType: {
+          id: pinTypes.id,
+          name: pinTypes.name,
+          color: pinTypes.color,
+        },
+      })
+      .from(partners)
+      .leftJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
+      .where(and(...conditions))
+
+    return rows.map(r => ({
+      ...r,
+      pinType: r.pinType?.id ? (r.pinType as { id: string; name: string; color: string }) : null,
+    }))
   },
 
   async findPublicPins(tenantId: string, city?: string, state?: string) {
@@ -105,10 +115,27 @@ export const mapRepository = {
     if (city) conditions.push(eq(partners.city, city))
     if (state) conditions.push(eq(partners.state, state))
 
-    return db.query.partners.findMany({
-      where: and(...conditions),
-      columns: { id: true, name: true, address: true, lat: true, lng: true, pinType: true },
-    })
+    const rows = await db
+      .select({
+        id: partners.id,
+        name: partners.name,
+        address: partners.address,
+        lat: partners.lat,
+        lng: partners.lng,
+        pinType: {
+          id: pinTypes.id,
+          name: pinTypes.name,
+          color: pinTypes.color,
+        },
+      })
+      .from(partners)
+      .leftJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
+      .where(and(...conditions))
+
+    return rows.map(r => ({
+      ...r,
+      pinType: r.pinType?.id ? (r.pinType as { id: string; name: string; color: string }) : null,
+    }))
   },
 
   async findLocalities(tenantId: string) {

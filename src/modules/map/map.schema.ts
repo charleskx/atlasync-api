@@ -16,7 +16,7 @@ export const mapPinsQuerySchema = z.object({
   city: z.string().optional(),
   state: z.string().optional(),
   visibility: z.enum(['public', 'internal']).optional(),
-  pinType: z.string().optional(),
+  pinTypeId: z.string().uuid().optional(),
   geocodeStatus: z.enum(['pending', 'done', 'failed']).optional(),
 })
 

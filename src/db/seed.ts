@@ -9,6 +9,7 @@ import {
   partnerColumns,
   partnerValues,
   partners,
+  pinTypes,
   subscriptions,
   tenantSettings,
   tenants,
@@ -31,7 +32,13 @@ const BR_CITIES = [
   { city: 'Brasília', state: 'DF', lat: -15.7801, lng: -47.9292 },
 ]
 
-const PIN_TYPES = ['loja', 'distribuidor', 'parceiro', 'representante', 'franquia']
+const PIN_TYPE_DEFS = [
+  { name: 'Loja', color: '#6366f1' },
+  { name: 'Distribuidor', color: '#f59e0b' },
+  { name: 'Parceiro', color: '#10b981' },
+  { name: 'Representante', color: '#ef4444' },
+  { name: 'Franquia', color: '#3b82f6' },
+]
 const VISIBILITIES = ['public', 'internal'] as const
 
 function randCity() {
@@ -48,11 +55,20 @@ async function clearAll() {
   await db.delete(partnerColumns)
   await db.delete(maps)
   await db.delete(partners)
+  await db.delete(pinTypes)
   await db.delete(users)
   await db.delete(subscriptions)
   await db.delete(tenantSettings)
   await db.delete(tenants)
   console.log('  ✓ Banco limpo')
+}
+
+async function createPinTypes(tenantId: string) {
+  const inserted = await db
+    .insert(pinTypes)
+    .values(PIN_TYPE_DEFS.map(pt => ({ ...pt, tenantId, updatedAt: new Date() })))
+    .returning()
+  return inserted
 }
 
 async function createTenant(name: string, slug: string, email: string, planStatus: string) {
@@ -136,6 +152,7 @@ async function createPartnerColumns(tenantId: string) {
 async function createPartners(
   tenantId: string,
   columns: { id: string; key: string }[],
+  seedPinTypes: { id: string }[],
   count: number,
 ) {
   const colMap = Object.fromEntries(columns.map(c => [c.key, c.id]))
@@ -144,6 +161,7 @@ async function createPartners(
     const location = randCity()
     const lat = randCoordOffset(location.lat)
     const lng = randCoordOffset(location.lng)
+    const pinTypeId = seedPinTypes[Math.floor(Math.random() * seedPinTypes.length)].id
 
     const [partner] = await db
       .insert(partners)
@@ -157,7 +175,7 @@ async function createPartners(
         state: location.state,
         geocodeStatus: 'done',
         geocodedAt: new Date(),
-        pinType: PIN_TYPES[Math.floor(Math.random() * PIN_TYPES.length)],
+        pinTypeId,
         visibility: VISIBILITIES[Math.floor(Math.random() * 2)],
         source: 'dashboard',
         externalKey: `seed-${tenantId.slice(0, 4)}-${i}`,
@@ -274,7 +292,8 @@ async function main() {
   )
   await createUsers(tenant1.id)
   const cols1 = await createPartnerColumns(tenant1.id)
-  await createPartners(tenant1.id, cols1, 40)
+  const pinTypes1 = await createPinTypes(tenant1.id)
+  await createPartners(tenant1.id, cols1, pinTypes1, 40)
   await createMaps(tenant1.id)
   console.log('\n  ✓ Tenant 1 — Distribuidora Alfa Ltda (plano ativo, 40 parceiros)')
   console.log(`    owner email: owner-${tenant1.id.slice(0, 6)}@atlasync-seed.dev`)
@@ -289,7 +308,8 @@ async function main() {
   )
   await createUsers(tenant2.id)
   const cols2 = await createPartnerColumns(tenant2.id)
-  await createPartners(tenant2.id, cols2, 15)
+  const pinTypes2 = await createPinTypes(tenant2.id)
+  await createPartners(tenant2.id, cols2, pinTypes2, 15)
   await createMaps(tenant2.id)
   console.log('\n  ✓ Tenant 2 — Rede Beta Franquias (trial, 15 parceiros)')
   console.log(`    owner email: owner-${tenant2.id.slice(0, 6)}@atlasync-seed.dev`)
@@ -304,7 +324,8 @@ async function main() {
   )
   await createUsers(tenant3.id)
   const cols3 = await createPartnerColumns(tenant3.id)
-  await createPartners(tenant3.id, cols3, 5)
+  const pinTypes3 = await createPinTypes(tenant3.id)
+  await createPartners(tenant3.id, cols3, pinTypes3, 5)
   console.log('\n  ✓ Tenant 3 — Gama Corp (assinatura cancelada, 5 parceiros)')
   console.log(`    owner email: owner-${tenant3.id.slice(0, 6)}@atlasync-seed.dev`)
   console.log('    senha: senha@123')

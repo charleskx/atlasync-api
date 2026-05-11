@@ -3,9 +3,16 @@ import { redis } from '../../config/redis'
 import { geocodingQueue } from '../../queues/geocoding.queue'
 import type { ImportJobPayload } from '../../queues/import.queue'
 import { partnerRepository } from '../partner/partner.repository'
+import { pinTypeRepository } from '../pin-type/pin-type.repository'
 import { importRepository } from './import.repository'
 
 const PROGRESS_BATCH = 10
+
+// Cache de nome → id por tenant para evitar consultas repetidas por linha
+async function buildPinTypeCache(tenantId: string): Promise<Map<string, string>> {
+  const all = await pinTypeRepository.findAll(tenantId)
+  return new Map(all.map(pt => [pt.name.toLowerCase(), pt.id]))
+}
 
 export function createImportWorker() {
   return new Worker<ImportJobPayload>(
@@ -27,16 +34,22 @@ export function createImportWorker() {
       const errorLog: Array<{ row: number; message: string }> = []
       const processedKeys = new Set<string>()
 
+      const pinTypeCache = await buildPinTypeCache(tenantId)
+
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
         try {
+          const pinTypeId = row.pinType
+            ? (pinTypeCache.get(row.pinType.toLowerCase()) ?? null)
+            : null
+
           const existing = await partnerRepository.findByExternalKey(row.externalKey, tenantId)
 
           if (existing) {
             await partnerRepository.update(existing.id, tenantId, {
               name: row.name,
               address: row.address,
-              pinType: row.pinType,
+              pinTypeId: pinTypeId ?? undefined,
               visibility: row.visibility as 'public' | 'internal' | undefined,
               dynamicValues: row.dynamicValues,
             })
@@ -52,7 +65,7 @@ export function createImportWorker() {
             const partner = await partnerRepository.create(tenantId, {
               name: row.name,
               address: row.address,
-              pinType: row.pinType,
+              pinTypeId: pinTypeId ?? undefined,
               visibility: (row.visibility as 'public' | 'internal') ?? 'public',
               dynamicValues: row.dynamicValues,
               source: 'import',
