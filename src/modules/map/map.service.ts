@@ -102,7 +102,15 @@ export const mapService = {
     const map = await mapRepository.findByEmbedToken(token)
     if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
 
-    const settings = await tenantRepository.findSettings(map.tenantId)
+    const [settings, { tenantActive, subscriptionActive }] = await Promise.all([
+      tenantRepository.findSettings(map.tenantId),
+      tenantRepository.findTenantStatus(map.tenantId),
+    ])
+
+    if (!tenantActive || !subscriptionActive) {
+      throw new AppError('MAP_DISABLED', 403, 'Mapa público desabilitado')
+    }
+
     if (!settings?.publicMapEnabled) {
       throw new AppError('MAP_DISABLED', 403, 'Mapa público desabilitado')
     }
