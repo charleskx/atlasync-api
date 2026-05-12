@@ -21,6 +21,7 @@ export const partnerColumns = pgTable(
     // text | number | boolean | date | url
     dataType: varchar('data_type', { length: 20 }).default('text'),
     visible: boolean('visible').default(true),
+    readonly: boolean('readonly').default(false),
     sortOrder: integer('sort_order').default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),

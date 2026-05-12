@@ -72,4 +72,8 @@ export const partnerService = {
   async getColumns(requester: Requester) {
     return partnerRepository.getColumns(requester.tenantId)
   },
+
+  async updateColumn(columnId: string, tenantId: string, data: { readonly: boolean }) {
+    await partnerRepository.updateColumn(columnId, tenantId, data)
+  },
 }
