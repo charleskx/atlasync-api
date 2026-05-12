@@ -11,6 +11,7 @@ import {
   refreshSchema,
   registerSchema,
   resetPasswordSchema,
+  recoveryLoginSchema,
   totpLoginSchema,
   totpVerifySchema,
   verifyEmailSchema,
@@ -87,7 +88,7 @@ export async function authRoutes(app: FastifyInstance) {
   })
 
   app.post('/2fa/recover', async (req, reply) => {
-    const body = totpLoginSchema.safeParse(req.body)
+    const body = recoveryLoginSchema.safeParse(req.body)
     if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)
 
     const result = await authService.loginWithRecoveryCode(body.data.tempToken, body.data.code)

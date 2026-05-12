@@ -44,6 +44,11 @@ export const totpLoginSchema = z.object({
   code: z.string().length(6),
 })
 
+export const recoveryLoginSchema = z.object({
+  tempToken: z.string().min(1),
+  code: z.string().min(1),
+})
+
 export type RegisterInput = z.infer<typeof registerSchema>
 export type LoginInput = z.infer<typeof loginSchema>
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>
