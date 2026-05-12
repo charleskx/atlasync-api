@@ -23,6 +23,13 @@ export const mapService = {
     const ability = defineAbilityFor({ role: requester.role })
     if (!ability.can('create', 'Map')) throw new AppError('FORBIDDEN', 403, 'Sem permissão')
 
+    if (data.type === 'public') {
+      const settings = await tenantRepository.findSettings(requester.tenantId)
+      if (!settings?.publicMapEnabled) {
+        throw new AppError('PUBLIC_MAP_DISABLED', 403, 'Mapa público está desabilitado nas configurações do workspace')
+      }
+    }
+
     const embedToken = data.type === 'public' ? generateToken(24) : undefined
 
     return mapRepository.create(requester.tenantId, {
