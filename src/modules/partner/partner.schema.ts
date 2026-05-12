@@ -14,6 +14,7 @@ export const updatePartnerSchema = z.object({
   pinTypeId: z.string().uuid().nullable().optional(),
   visibility: z.enum(['public', 'internal']).optional(),
   dynamicValues: z.record(z.string()).optional(),
+  notes: z.string().optional().nullable(),
 })
 
 export const listPartnersSchema = z.object({

@@ -35,6 +35,7 @@ export const partnerRepository = {
           externalKey: partners.externalKey,
           city: partners.city,
           state: partners.state,
+          notes: partners.notes,
           createdAt: partners.createdAt,
           updatedAt: partners.updatedAt,
           deletedAt: partners.deletedAt,
@@ -80,6 +81,7 @@ export const partnerRepository = {
         externalKey: partners.externalKey,
         city: partners.city,
         state: partners.state,
+        notes: partners.notes,
         createdAt: partners.createdAt,
         updatedAt: partners.updatedAt,
         deletedAt: partners.deletedAt,
@@ -160,6 +162,7 @@ export const partnerRepository = {
     if (data.address !== undefined) updates.address = data.address
     if ('pinTypeId' in data) updates.pinTypeId = data.pinTypeId ?? null
     if (data.visibility !== undefined) updates.visibility = data.visibility
+    if ('notes' in data) updates.notes = data.notes ?? null
 
     const [updated] = await db
       .update(partners)
@@ -251,6 +254,7 @@ type PartnerRow = {
   externalKey: string | null
   city: string | null
   state: string | null
+  notes: string | null
   createdAt: Date
   updatedAt: Date
   deletedAt: Date | null
