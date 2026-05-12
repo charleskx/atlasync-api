@@ -1,11 +1,12 @@
 import argon2 from 'argon2'
 import dayjs from 'dayjs'
 import { eq } from 'drizzle-orm'
+import { and, isNull } from 'drizzle-orm'
 import { generateSecret, generateURI, verifySync } from 'otplib'
 import QRCode from 'qrcode'
 import { db } from '../../config/database'
 import { env } from '../../config/env'
-import { refreshTokens, subscriptions, tenantSettings, tenants, users } from '../../db/schema'
+import { refreshTokens, subscriptions, tenantSettings, tenants, totpRecoveryCodes, users } from '../../db/schema'
 import { AppError } from '../../shared/errors'
 import { inviteEmailHtml, resetPasswordHtml, sendMail, verifyEmailHtml } from '../../shared/mailer'
 import { generateToken, slugify } from '../../shared/utils'
@@ -144,7 +145,7 @@ export const authService = {
     if (user.totpEnabled) throw new AppError('TOTP_ALREADY_ENABLED', 409, '2FA já está ativado')
 
     const secret = generateSecret()
-    const otpauth = generateURI({ issuer: 'Atlasync', label: user.email, secret })
+    const otpauth = generateURI({ issuer: 'AtlaSync', label: user.email, secret })
     const qrCode = await QRCode.toDataURL(otpauth)
 
     await authRepository.updateUser(userId, { totpSecret: secret, updatedAt: new Date() })
@@ -162,7 +163,23 @@ export const authService = {
     const result = verifySync({ token: code, secret: user.totpSecret })
     if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
 
-    await authRepository.updateUser(userId, { totpEnabled: true, updatedAt: new Date() })
+    // Generate 8 recovery codes and store hashed versions
+    const plainCodes = Array.from({ length: 8 }, () => {
+      const a = generateToken(4).toUpperCase()
+      const b = generateToken(4).toUpperCase()
+      return `${a}-${b}`
+    })
+
+    await db.transaction(async tx => {
+      await tx.update(users).set({ totpEnabled: true, updatedAt: new Date() }).where(eq(users.id, userId))
+      // Remove any old recovery codes
+      await tx.delete(totpRecoveryCodes).where(eq(totpRecoveryCodes.userId, userId))
+      // Insert new hashed codes
+      const hashed = await Promise.all(plainCodes.map(c => argon2.hash(c)))
+      await tx.insert(totpRecoveryCodes).values(hashed.map(codeHash => ({ userId, codeHash })))
+    })
+
+    return { recoveryCodes: plainCodes }
   },
 
   async disableTotp(userId: string, code: string) {
@@ -174,11 +191,55 @@ export const authService = {
     const result = verifySync({ token: code, secret: user.totpSecret })
     if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
 
-    await authRepository.updateUser(userId, {
-      totpSecret: null,
-      totpEnabled: false,
-      updatedAt: new Date(),
+    await db.transaction(async tx => {
+      await tx.update(users).set({ totpSecret: null, totpEnabled: false, updatedAt: new Date() }).where(eq(users.id, userId))
+      await tx.delete(totpRecoveryCodes).where(eq(totpRecoveryCodes.userId, userId))
     })
+  },
+
+  async loginWithRecoveryCode(tempToken: string, code: string) {
+    const entry = tempTokens.get(tempToken)
+    if (!entry || dayjs().isAfter(dayjs(entry.expiresAt))) {
+      throw new AppError('INVALID_TOKEN', 401, 'Token temporário inválido ou expirado')
+    }
+
+    const user = await authRepository.findUserById(entry.userId)
+    if (!user) throw new AppError('INVALID_TOKEN', 401, 'Token temporário inválido')
+
+    // Find all unused recovery codes for the user
+    const stored = await db
+      .select()
+      .from(totpRecoveryCodes)
+      .where(eq(totpRecoveryCodes.userId, user.id))
+
+    const unused = stored.filter(r => !r.usedAt)
+    if (!unused.length) throw new AppError('NO_RECOVERY_CODES', 400, 'Sem códigos de recuperação disponíveis')
+
+    // Try to match the provided code against stored hashes
+    let matched: typeof unused[0] | null = null
+    for (const row of unused) {
+      const valid = await argon2.verify(row.codeHash, code.toUpperCase().replace(/\s/g, ''))
+      if (valid) { matched = row; break }
+    }
+
+    if (!matched) throw new AppError('INVALID_RECOVERY_CODE', 401, 'Código de recuperação inválido')
+
+    // Mark code as used
+    await db.update(totpRecoveryCodes)
+      .set({ usedAt: new Date() })
+      .where(eq(totpRecoveryCodes.id, matched.id))
+
+    tempTokens.delete(tempToken)
+
+    const refreshTokenValue = generateToken(64)
+    await authRepository.createRefreshToken({
+      userId: user.id,
+      tenantId: user.tenantId,
+      token: refreshTokenValue,
+      expiresAt: dayjs().add(30, 'day').toDate(),
+    })
+
+    return { user, refreshToken: refreshTokenValue }
   },
 
   async refresh(token: string) {

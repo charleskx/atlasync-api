@@ -82,8 +82,23 @@ export async function authRoutes(app: FastifyInstance) {
     const body = totpVerifySchema.safeParse(req.body)
     if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)
 
-    await authService.verifyAndEnableTotp(req.userId, body.data.code)
-    return { success: true }
+    const result = await authService.verifyAndEnableTotp(req.userId, body.data.code)
+    return { success: true, recoveryCodes: result.recoveryCodes }
+  })
+
+  app.post('/2fa/recover', async (req, reply) => {
+    const body = totpLoginSchema.safeParse(req.body)
+    if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)
+
+    const result = await authService.loginWithRecoveryCode(body.data.tempToken, body.data.code)
+    const accessToken = await reply.jwtSign({
+      sub: result.user.id,
+      tenantId: result.user.tenantId,
+      role: result.user.role,
+      name: result.user.name,
+    })
+
+    return { accessToken, refreshToken: result.refreshToken }
   })
 
   app.delete('/2fa', { preHandler: [authenticate] }, async req => {

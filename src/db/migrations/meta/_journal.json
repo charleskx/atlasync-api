@@ -15,6 +15,13 @@
       "when": 1778558046552,
       "tag": "0001_remove_google_maps_api_key",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778584521312,
+      "tag": "0002_add_totp_recovery_codes",
+      "breakpoints": true
     }
   ]
 }
