@@ -3,6 +3,7 @@ import { AppError } from '../../shared/errors'
 import { defineAbilityFor } from '../../shared/permissions'
 import { generateToken } from '../../shared/utils'
 import { mapRepository } from './map.repository'
+import { tenantRepository } from '../tenant/tenant.repository'
 import type { CreateMapInput, MapPinsQuery, UpdateMapInput } from './map.schema'
 
 type Requester = { id: string; role: string; tenantId: string }
@@ -100,5 +101,12 @@ export const mapService = {
     const map = await mapRepository.findByEmbedToken(token)
     if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
     return mapRepository.findLocalities(map.tenantId)
+  },
+
+  async getPublicConfig(token: string) {
+    const map = await mapRepository.findByEmbedToken(token)
+    if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
+    const settings = await tenantRepository.findSettings(map.tenantId)
+    return { googleMapsApiKey: settings?.googleMapsApiKey ?? null }
   },
 }

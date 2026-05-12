@@ -89,6 +89,11 @@ export async function mapRoutes(app: FastifyInstance) {
 
   // ─── Rotas públicas (sem autenticação) ────────────────────────────────────
 
+  app.get('/public/:token/config', async req => {
+    const { token } = req.params as { token: string }
+    return mapService.getPublicConfig(token)
+  })
+
   app.get('/public/:token/pins', async req => {
     const { token } = req.params as { token: string }
     const { city, state } = req.query as { city?: string; state?: string }
