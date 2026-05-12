@@ -118,9 +118,9 @@ async function softDeleteStale(tenantId: string, processedKeys: Set<string>, job
   const existingKeys = await partnerRepository.findAllImportedKeys(tenantId)
   const toDelete = existingKeys.filter(k => !processedKeys.has(k))
 
-  if (toDelete.length > 0) {
-    await partnerRepository.softDeleteByExternalKeys(tenantId, toDelete, jobId)
-  }
+  // softDeleteByExternalKeys recebe as chaves a PRESERVAR (excludeKeys = NOT IN).
+  // Passamos processedKeys para que apenas os registros ausentes da nova planilha sejam deletados.
+  await partnerRepository.softDeleteByExternalKeys(tenantId, Array.from(processedKeys), jobId)
 
   return toDelete.length
 }

@@ -200,7 +200,9 @@ export const partnerRepository = {
       .where(and(eq(partners.id, id), eq(partners.tenantId, tenantId)))
   },
 
-  async softDeleteByExternalKeys(tenantId: string, excludeKeys: string[], jobId?: string) {
+  /** Soft-deletes imported partners whose externalKey is NOT in `keepKeys`. */
+  async softDeleteByExternalKeys(tenantId: string, keepKeys: string[], jobId?: string) {
+    const excludeKeys = keepKeys
     const jobIdVal = jobId ?? null
     if (excludeKeys.length === 0) {
       await db
