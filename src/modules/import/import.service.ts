@@ -10,6 +10,7 @@ export const importService = {
   async upload(
     fileBuffer: Buffer,
     fileName: string,
+    fileSize: number,
     requester: Requester,
     mode: 'full' | 'incremental' = 'full',
   ) {
@@ -22,7 +23,7 @@ export const importService = {
       throw new AppError('EMPTY_FILE', 400, 'Planilha vazia ou sem linhas válidas')
     }
 
-    const job = await importRepository.create(requester.tenantId, requester.id, fileName, mode)
+    const job = await importRepository.create(requester.tenantId, requester.id, fileName, fileSize, mode)
 
     await importQueue.add('process', {
       jobId: job.id,

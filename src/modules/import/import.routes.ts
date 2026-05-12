@@ -30,6 +30,7 @@ export async function importRoutes(app: FastifyInstance) {
     const result = await importService.upload(
       buffer,
       data.filename,
+      buffer.length,
       { id: req.userId, role: req.userRole, tenantId: req.tenantId },
       mode,
     )

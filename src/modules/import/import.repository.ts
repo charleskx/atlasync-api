@@ -17,10 +17,10 @@ type JobUpdate = {
 }
 
 export const importRepository = {
-  async create(tenantId: string, userId: string, fileName: string, mode: 'full' | 'incremental') {
+  async create(tenantId: string, userId: string, fileName: string, fileSize: number, mode: 'full' | 'incremental') {
     const [job] = await db
       .insert(importJobs)
-      .values({ tenantId, userId, fileName, status: 'queued', mode })
+      .values({ tenantId, userId, fileName, fileSize, status: 'queued', mode })
       .returning()
     return job
   },

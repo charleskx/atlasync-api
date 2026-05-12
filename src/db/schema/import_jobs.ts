@@ -15,6 +15,7 @@ export const importJobs = pgTable('import_jobs', {
   // full | incremental
   mode: varchar('mode', { length: 20 }).default('full').notNull(),
   fileName: varchar('file_name', { length: 300 }),
+  fileSize: integer('file_size'),
   totalRows: integer('total_rows'),
   processedRows: integer('processed_rows').default(0),
   created: integer('created').default(0),
