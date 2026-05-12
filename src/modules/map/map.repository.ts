@@ -121,6 +121,8 @@ export const mapRepository = {
         id: partners.id,
         name: partners.name,
         address: partners.address,
+        city: partners.city,
+        state: partners.state,
         lat: partners.lat,
         lng: partners.lng,
         pinType: {
