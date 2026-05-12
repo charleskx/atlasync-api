@@ -104,7 +104,7 @@ export const mapRepository = {
     }))
   },
 
-  async findPublicPins(tenantId: string, city?: string, state?: string) {
+  async findPublicPins(tenantId: string, city?: string, state?: string, pinTypeId?: string) {
     const conditions = [
       eq(partners.tenantId, tenantId),
       isNull(partners.deletedAt),
@@ -114,6 +114,7 @@ export const mapRepository = {
 
     if (city) conditions.push(eq(partners.city, city))
     if (state) conditions.push(eq(partners.state, state))
+    if (pinTypeId) conditions.push(eq(partners.pinTypeId, pinTypeId))
 
     const rows = await db
       .select({
@@ -138,14 +139,17 @@ export const mapRepository = {
     }))
   },
 
-  async findLocalities(tenantId: string) {
+  async findLocalities(tenantId: string, state?: string) {
+    const conditions = [
+      eq(partners.tenantId, tenantId),
+      isNull(partners.deletedAt),
+      eq(partners.visibility, 'public'),
+      isNotNull(partners.lat),
+    ]
+    if (state) conditions.push(eq(partners.state, state))
+
     const rows = await db.query.partners.findMany({
-      where: and(
-        eq(partners.tenantId, tenantId),
-        isNull(partners.deletedAt),
-        eq(partners.visibility, 'public'),
-        isNotNull(partners.lat),
-      ),
+      where: and(...conditions),
       columns: { city: true, state: true },
     })
 
@@ -153,5 +157,20 @@ export const mapRepository = {
     const states = [...new Set(rows.map(r => r.state).filter(Boolean))] as string[]
 
     return { cities: cities.sort(), states: states.sort() }
+  },
+
+  async findPublicPinTypes(tenantId: string) {
+    const rows = await db
+      .selectDistinct({ id: pinTypes.id, name: pinTypes.name, color: pinTypes.color })
+      .from(partners)
+      .innerJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
+      .where(and(
+        eq(partners.tenantId, tenantId),
+        isNull(partners.deletedAt),
+        eq(partners.visibility, 'public'),
+        isNotNull(partners.lat),
+      ))
+      .orderBy(pinTypes.name)
+    return rows
   },
 }

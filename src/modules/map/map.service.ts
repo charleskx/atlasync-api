@@ -91,16 +91,22 @@ export const mapService = {
     }
   },
 
-  async getPublicPins(token: string, city?: string, state?: string) {
+  async getPublicPins(token: string, city?: string, state?: string, pinTypeId?: string) {
     const map = await mapRepository.findByEmbedToken(token)
     if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
-    return mapRepository.findPublicPins(map.tenantId, city, state)
+    return mapRepository.findPublicPins(map.tenantId, city, state, pinTypeId)
   },
 
-  async getPublicLocalities(token: string) {
+  async getPublicLocalities(token: string, state?: string) {
     const map = await mapRepository.findByEmbedToken(token)
     if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
-    return mapRepository.findLocalities(map.tenantId)
+    return mapRepository.findLocalities(map.tenantId, state)
+  },
+
+  async getPublicPinTypes(token: string) {
+    const map = await mapRepository.findByEmbedToken(token)
+    if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
+    return mapRepository.findPublicPinTypes(map.tenantId)
   },
 
   async getPublicConfig(token: string) {

@@ -96,12 +96,18 @@ export async function mapRoutes(app: FastifyInstance) {
 
   app.get('/public/:token/pins', async req => {
     const { token } = req.params as { token: string }
-    const { city, state } = req.query as { city?: string; state?: string }
-    return mapService.getPublicPins(token, city, state)
+    const { city, state, pinTypeId } = req.query as { city?: string; state?: string; pinTypeId?: string }
+    return mapService.getPublicPins(token, city, state, pinTypeId)
   })
 
   app.get('/public/:token/localities', async req => {
     const { token } = req.params as { token: string }
-    return mapService.getPublicLocalities(token)
+    const { state } = req.query as { state?: string }
+    return mapService.getPublicLocalities(token, state)
+  })
+
+  app.get('/public/:token/pin-types', async req => {
+    const { token } = req.params as { token: string }
+    return mapService.getPublicPinTypes(token)
   })
 }
