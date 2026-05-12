@@ -9,6 +9,7 @@ import { redis } from './config/redis'
 import { adminRoutes } from './modules/admin/admin.routes'
 import { authRoutes } from './modules/auth/auth.routes'
 import { billingRoutes } from './modules/billing/billing.routes'
+import { dashboardRoutes } from './modules/dashboard/dashboard.routes'
 import { exportRoutes } from './modules/export/export.routes'
 import { importRoutes } from './modules/import/import.routes'
 import { mapRoutes } from './modules/map/map.routes'
@@ -79,6 +80,7 @@ export async function buildApp() {
   app.get('/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }))
 
   await app.register(authRoutes, { prefix: '/auth' })
+  await app.register(dashboardRoutes, { prefix: '/dashboard' })
   await app.register(userRoutes, { prefix: '/users' })
   await app.register(billingRoutes, { prefix: '/billing' })
   await app.register(partnerRoutes, { prefix: '/partners' })
