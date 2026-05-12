@@ -8,7 +8,14 @@ type Requester = { id: string; role: string; tenantId: string }
 
 export const partnerService = {
   async list(requester: Requester, filters: ListPartnersInput) {
-    return partnerRepository.findAll(requester.tenantId, filters)
+    const { data, total } = await partnerRepository.findAll(requester.tenantId, filters)
+    return {
+      data,
+      total,
+      page: filters.page,
+      limit: filters.limit,
+      totalPages: Math.ceil(total / filters.limit),
+    }
   },
 
   async getById(id: string, requester: Requester) {

@@ -15,7 +15,6 @@ export const tenantSettings = pgTable('tenant_settings', {
     .references(() => tenants.id)
     .notNull()
     .unique(),
-  googleMapsApiKey: varchar('google_maps_api_key', { length: 200 }),
   defaultMapZoom: integer('default_map_zoom').default(12),
   defaultMapLat: doublePrecision('default_map_lat'),
   defaultMapLng: doublePrecision('default_map_lng'),

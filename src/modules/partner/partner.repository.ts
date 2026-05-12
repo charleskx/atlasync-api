@@ -14,36 +14,43 @@ export const partnerRepository = {
     if (pinTypeId) conditions.push(eq(partners.pinTypeId, pinTypeId))
     if (geocodeStatus) conditions.push(eq(partners.geocodeStatus, geocodeStatus))
 
-    const rows = await db
-      .select({
-        id: partners.id,
-        tenantId: partners.tenantId,
-        name: partners.name,
-        address: partners.address,
-        lat: partners.lat,
-        lng: partners.lng,
-        geocodedAt: partners.geocodedAt,
-        geocodeStatus: partners.geocodeStatus,
-        visibility: partners.visibility,
-        source: partners.source,
-        externalKey: partners.externalKey,
-        city: partners.city,
-        state: partners.state,
-        createdAt: partners.createdAt,
-        updatedAt: partners.updatedAt,
-        deletedAt: partners.deletedAt,
-        pinTypeId: pinTypes.id,
-        pinTypeName: pinTypes.name,
-        pinTypeColor: pinTypes.color,
-      })
-      .from(partners)
-      .leftJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
-      .where(and(...conditions))
-      .orderBy(asc(partners.name))
-      .limit(limit)
-      .offset(offset)
+    const [countRow, rows] = await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(partners)
+        .where(and(...conditions))
+        .then(r => r[0]),
+      db
+        .select({
+          id: partners.id,
+          tenantId: partners.tenantId,
+          name: partners.name,
+          address: partners.address,
+          lat: partners.lat,
+          lng: partners.lng,
+          geocodedAt: partners.geocodedAt,
+          geocodeStatus: partners.geocodeStatus,
+          visibility: partners.visibility,
+          source: partners.source,
+          externalKey: partners.externalKey,
+          city: partners.city,
+          state: partners.state,
+          createdAt: partners.createdAt,
+          updatedAt: partners.updatedAt,
+          deletedAt: partners.deletedAt,
+          pinTypeId: pinTypes.id,
+          pinTypeName: pinTypes.name,
+          pinTypeColor: pinTypes.color,
+        })
+        .from(partners)
+        .leftJoin(pinTypes, eq(partners.pinTypeId, pinTypes.id))
+        .where(and(...conditions))
+        .orderBy(asc(partners.name))
+        .limit(limit)
+        .offset(offset),
+    ])
 
-    return Promise.all(
+    const data = await Promise.all(
       rows.map(r =>
         attachDynamicValues({
           ...r,
@@ -53,6 +60,8 @@ export const partnerRepository = {
         }),
       ),
     )
+
+    return { data, total: countRow.count }
   },
 
   async findById(id: string, tenantId: string) {

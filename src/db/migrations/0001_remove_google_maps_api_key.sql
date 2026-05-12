@@ -1,0 +1,1 @@
+ALTER TABLE "tenant_settings" DROP COLUMN "google_maps_api_key";

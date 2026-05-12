@@ -10,13 +10,7 @@ export const tenantService = {
     const settings = await tenantRepository.findSettings(requester.tenantId)
     if (!settings) throw new AppError('SETTINGS_NOT_FOUND', 404, 'Configurações não encontradas')
 
-    // Nunca expor a API key completa — retorna máscara
-    return {
-      ...settings,
-      googleMapsApiKey: settings.googleMapsApiKey
-        ? `${settings.googleMapsApiKey.slice(0, 6)}${'*'.repeat(Math.max(0, settings.googleMapsApiKey.length - 6))}`
-        : null,
-    }
+    return settings
   },
 
   async updateSettings(data: UpdateSettingsInput, requester: Requester) {
