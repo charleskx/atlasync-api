@@ -118,7 +118,7 @@ async function softDeleteStale(tenantId: string, processedKeys: Set<string>): Pr
   const toDelete = existingKeys.filter(k => !processedKeys.has(k))
 
   if (toDelete.length > 0) {
-    await partnerRepository.softDeleteByExternalKeys(tenantId, Array.from(processedKeys))
+    await partnerRepository.softDeleteByExternalKeys(tenantId, toDelete)
   }
 
   return toDelete.length
