@@ -27,6 +27,17 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.status(204).send()
   })
 
+  app.get('/tenants/:id/imports', async req => {
+    const { id } = req.params as { id: string }
+    return adminService.listTenantImports(id, { role: req.userRole })
+  })
+
+  app.post('/tenants/:tenantId/imports/:jobId/rollback', async (req, reply) => {
+    const { tenantId, jobId } = req.params as { tenantId: string; jobId: string }
+    await adminService.rollbackImport(jobId, tenantId, { role: req.userRole })
+    return reply.status(204).send()
+  })
+
   app.get('/metrics', async req => {
     return adminService.getMetrics({ role: req.userRole })
   })

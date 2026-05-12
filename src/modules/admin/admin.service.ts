@@ -38,6 +38,16 @@ export const adminService = {
     await adminRepository.setTenantActive(id, true)
   },
 
+  async listTenantImports(tenantId: string, requester: Requester) {
+    assertSuperAdmin(requester)
+    return adminRepository.listTenantImports(tenantId, 10)
+  },
+
+  async rollbackImport(jobId: string, tenantId: string, requester: Requester) {
+    assertSuperAdmin(requester)
+    await adminRepository.rollbackImport(jobId, tenantId)
+  },
+
   async getMetrics(requester: Requester) {
     assertSuperAdmin(requester)
     return adminRepository.getMetrics()

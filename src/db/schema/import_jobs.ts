@@ -25,5 +25,6 @@ export const importJobs = pgTable('import_jobs', {
   errorLog: jsonb('error_log'),
   startedAt: timestamp('started_at'),
   finishedAt: timestamp('finished_at'),
+  rolledBackAt: timestamp('rolled_back_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })

@@ -70,6 +70,7 @@ export function createImportWorker() {
               dynamicValues: row.dynamicValues,
               source: 'import',
               externalKey: row.externalKey,
+              importJobId: jobId,
             })
             await geocodingQueue.add('geocode', {
               partnerId: partner.id,
@@ -92,7 +93,7 @@ export function createImportWorker() {
 
       let removed = 0
       if (mode !== 'incremental') {
-        removed = await softDeleteStale(tenantId, processedKeys)
+        removed = await softDeleteStale(tenantId, processedKeys, jobId)
       }
 
       await importRepository.update(jobId, {
@@ -113,12 +114,12 @@ export function createImportWorker() {
   )
 }
 
-async function softDeleteStale(tenantId: string, processedKeys: Set<string>): Promise<number> {
+async function softDeleteStale(tenantId: string, processedKeys: Set<string>, jobId: string): Promise<number> {
   const existingKeys = await partnerRepository.findAllImportedKeys(tenantId)
   const toDelete = existingKeys.filter(k => !processedKeys.has(k))
 
   if (toDelete.length > 0) {
-    await partnerRepository.softDeleteByExternalKeys(tenantId, toDelete)
+    await partnerRepository.softDeleteByExternalKeys(tenantId, toDelete, jobId)
   }
 
   return toDelete.length

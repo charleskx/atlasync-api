@@ -32,6 +32,8 @@ export const partners = pgTable(
     externalKey: varchar('external_key', { length: 300 }),
     city: varchar('city', { length: 200 }),
     state: varchar('state', { length: 100 }),
+    importJobId: uuid('import_job_id'),
+    deletedByJobId: uuid('deleted_by_job_id'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     deletedAt: timestamp('deleted_at'),

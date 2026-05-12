@@ -126,7 +126,7 @@ export const partnerRepository = {
 
   async create(
     tenantId: string,
-    data: CreatePartnerInput & { source?: string; externalKey?: string; pinTypeId?: string | null },
+    data: CreatePartnerInput & { source?: string; externalKey?: string; pinTypeId?: string | null; importJobId?: string },
   ) {
     const [partner] = await db
       .insert(partners)
@@ -138,6 +138,7 @@ export const partnerRepository = {
         visibility: data.visibility,
         source: data.source ?? 'dashboard',
         externalKey: data.externalKey,
+        importJobId: data.importJobId ?? null,
         updatedAt: new Date(),
       })
       .returning()
@@ -199,11 +200,12 @@ export const partnerRepository = {
       .where(and(eq(partners.id, id), eq(partners.tenantId, tenantId)))
   },
 
-  async softDeleteByExternalKeys(tenantId: string, excludeKeys: string[]) {
+  async softDeleteByExternalKeys(tenantId: string, excludeKeys: string[], jobId?: string) {
+    const jobIdVal = jobId ?? null
     if (excludeKeys.length === 0) {
       await db
         .update(partners)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .set({ deletedAt: new Date(), updatedAt: new Date(), deletedByJobId: jobIdVal })
         .where(
           and(
             eq(partners.tenantId, tenantId),
@@ -214,7 +216,7 @@ export const partnerRepository = {
       return
     }
     await db.execute(
-      sql`UPDATE partners SET deleted_at = NOW(), updated_at = NOW()
+      sql`UPDATE partners SET deleted_at = NOW(), updated_at = NOW(), deleted_by_job_id = ${jobIdVal}
           WHERE tenant_id = ${tenantId}
             AND source = 'import'
             AND deleted_at IS NULL

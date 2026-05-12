@@ -1,6 +1,6 @@
-import { count, eq, isNull, sql } from 'drizzle-orm'
+import { and, count, desc, eq, isNull, isNotNull, sql } from 'drizzle-orm'
 import { db } from '../../config/database'
-import { importJobs, subscriptions, tenants, users } from '../../db/schema'
+import { importJobs, partners, subscriptions, tenants, users } from '../../db/schema'
 
 export const adminRepository = {
   async listTenants() {
@@ -54,6 +54,53 @@ export const adminRepository = {
 
   async setTenantActive(id: string, active: boolean) {
     await db.update(tenants).set({ active, updatedAt: new Date() }).where(eq(tenants.id, id))
+  },
+
+  async listTenantImports(tenantId: string, limit = 10) {
+    return db
+      .select({
+        id: importJobs.id,
+        fileName: importJobs.fileName,
+        fileSize: importJobs.fileSize,
+        mode: importJobs.mode,
+        status: importJobs.status,
+        totalRows: importJobs.totalRows,
+        created: importJobs.created,
+        updated: importJobs.updated,
+        removed: importJobs.removed,
+        failed: importJobs.failed,
+        rolledBackAt: importJobs.rolledBackAt,
+        createdAt: importJobs.createdAt,
+        finishedAt: importJobs.finishedAt,
+      })
+      .from(importJobs)
+      .where(eq(importJobs.tenantId, tenantId))
+      .orderBy(desc(importJobs.createdAt))
+      .limit(limit)
+  },
+
+  async rollbackImport(jobId: string, tenantId: string) {
+    // Restore partners soft-deleted by this job
+    await db
+      .update(partners)
+      .set({ deletedAt: null, deletedByJobId: null, updatedAt: new Date() })
+      .where(and(eq(partners.deletedByJobId, jobId), eq(partners.tenantId, tenantId)))
+
+    // Soft-delete partners created by this job
+    await db
+      .update(partners)
+      .set({ deletedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(partners.importJobId, jobId),
+        eq(partners.tenantId, tenantId),
+        isNull(partners.deletedAt),
+      ))
+
+    // Mark job as rolled back
+    await db
+      .update(importJobs)
+      .set({ rolledBackAt: new Date() })
+      .where(and(eq(importJobs.id, jobId), eq(importJobs.tenantId, tenantId)))
   },
 
   async getMetrics() {
