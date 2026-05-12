@@ -145,11 +145,11 @@ export const authService = {
 
     const secret = generateSecret()
     const otpauth = generateURI({ issuer: 'Atlasync', label: user.email, secret })
-    const qrcode = await QRCode.toDataURL(otpauth)
+    const qrCode = await QRCode.toDataURL(otpauth)
 
     await authRepository.updateUser(userId, { totpSecret: secret, updatedAt: new Date() })
 
-    return { secret, qrcode }
+    return { secret, qrCode }
   },
 
   async verifyAndEnableTotp(userId: string, code: string) {

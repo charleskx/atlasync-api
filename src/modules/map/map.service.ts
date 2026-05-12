@@ -91,27 +91,35 @@ export const mapService = {
     }
   },
 
-  async getPublicPins(token: string, city?: string, state?: string, pinTypeId?: string) {
+  async _resolvePublicMap(token: string) {
     const map = await mapRepository.findByEmbedToken(token)
     if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
+
+    const settings = await tenantRepository.findSettings(map.tenantId)
+    if (!settings?.publicMapEnabled) {
+      throw new AppError('MAP_DISABLED', 403, 'Mapa público desabilitado')
+    }
+
+    return map
+  },
+
+  async getPublicPins(token: string, city?: string, state?: string, pinTypeId?: string) {
+    const map = await this._resolvePublicMap(token)
     return mapRepository.findPublicPins(map.tenantId, city, state, pinTypeId)
   },
 
   async getPublicLocalities(token: string, state?: string) {
-    const map = await mapRepository.findByEmbedToken(token)
-    if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
+    const map = await this._resolvePublicMap(token)
     return mapRepository.findLocalities(map.tenantId, state)
   },
 
   async getPublicPinTypes(token: string) {
-    const map = await mapRepository.findByEmbedToken(token)
-    if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
+    const map = await this._resolvePublicMap(token)
     return mapRepository.findPublicPinTypes(map.tenantId)
   },
 
   async getPublicConfig(token: string) {
-    const map = await mapRepository.findByEmbedToken(token)
-    if (!map) throw new AppError('MAP_NOT_FOUND', 404, 'Mapa não encontrado')
+    await this._resolvePublicMap(token)
     return {}
   },
 }
