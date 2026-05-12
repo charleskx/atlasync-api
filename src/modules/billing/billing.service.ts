@@ -145,7 +145,7 @@ export const billingService = {
       expiring.map(row =>
         sendMail({
           to: row.ownerEmail,
-          subject: `Seu trial do Atlasync expira em ${daysFromNow} ${daysFromNow === 1 ? 'dia' : 'dias'}`,
+          subject: `Seu trial do AtlaSync expira em ${daysFromNow} ${daysFromNow === 1 ? 'dia' : 'dias'}`,
           html: trialExpiringHtml(row.tenantName, daysFromNow, env.APP_URL),
         }),
       ),

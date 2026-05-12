@@ -35,14 +35,14 @@ export function trialExpiringHtml(tenantName: string, daysLeft: number, appUrl: 
   const dayLabel = daysLeft === 1 ? 'dia' : 'dias'
   return `<p>Olá, <strong>${tenantName}</strong>!</p>
 <p>Seu período de teste gratuito expira em <strong>${daysLeft} ${dayLabel}</strong>.</p>
-<p>Para continuar usando o Atlasync sem interrupção, assine um dos nossos planos:</p>
+<p>Para continuar usando o AtlaSync sem interrupção, assine um dos nossos planos:</p>
 <p><a href="${appUrl}/billing">Ver planos e assinar</a></p>
 <p>Se tiver dúvidas, responda este e-mail.</p>`
 }
 
 export function inviteEmailHtml(inviterName: string, token: string, appUrl: string): string {
   const link = `${appUrl}/auth/accept-invite?token=${token}`
-  return `<p><strong>${inviterName}</strong> convidou você para o Atlasync.</p>
+  return `<p><strong>${inviterName}</strong> convidou você para o AtlaSync.</p>
 <p>Clique no link para definir sua senha e acessar a plataforma:</p>
 <p><a href="${link}">${link}</a></p>
 <p>Válido por 7 dias.</p>`

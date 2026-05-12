@@ -57,7 +57,7 @@ export const authService = {
       await tx.insert(subscriptions).values({
         tenantId: tenant.id,
         status: 'trialing',
-        trialEndsAt: dayjs().add(30, 'day').toDate(),
+        trialEndsAt: dayjs().add(14, 'day').toDate(),
         updatedAt: new Date(),
       })
 
@@ -78,7 +78,7 @@ export const authService = {
 
     sendMail({
       to: email,
-      subject: 'Verifique seu e-mail — Atlasync',
+      subject: 'Verifique seu e-mail — AtlaSync',
       html: verifyEmailHtml(emailVerifyToken, env.APP_URL),
     }).catch(err => console.error('[mailer]', err))
 
@@ -308,7 +308,7 @@ export const authService = {
 
     sendMail({
       to: email,
-      subject: 'Redefinição de senha — Atlasync',
+      subject: 'Redefinição de senha — AtlaSync',
       html: resetPasswordHtml(resetToken, env.APP_URL),
     }).catch(err => console.error('[mailer]', err))
   },
@@ -365,7 +365,7 @@ export const authService = {
 
     sendMail({
       to: user.email,
-      subject: `${inviterName} convidou você para o Atlasync`,
+      subject: `${inviterName} convidou você para o AtlaSync`,
       html: inviteEmailHtml(inviterName, inviteToken, env.APP_URL),
     }).catch(err => console.error('[mailer]', err))
   },

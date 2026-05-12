@@ -81,7 +81,7 @@ async function createTenant(name: string, slug: string, email: string, planStatu
     tenantId: tenant.id,
     status: planStatus,
     planType: Math.random() > 0.5 ? 'monthly' : 'annual',
-    trialEndsAt: planStatus === 'trialing' ? dayjs().add(30, 'day').toDate() : null,
+    trialEndsAt: planStatus === 'trialing' ? dayjs().add(14, 'day').toDate() : null,
     currentPeriodStart: dayjs().startOf('month').toDate(),
     currentPeriodEnd: dayjs().endOf('month').toDate(),
     updatedAt: new Date(),
