@@ -4,6 +4,7 @@ import { subscriptionGuard } from '../../middlewares/subscription-guard'
 import { AppError } from '../../shared/errors'
 import { createPartnerSchema, listPartnersSchema, updatePartnerSchema } from './partner.schema'
 import { partnerService } from './partner.service'
+import { mapRepository } from '../map/map.repository'
 
 const preHandler = [authenticate, subscriptionGuard]
 
@@ -15,6 +16,18 @@ export async function partnerRoutes(app: FastifyInstance) {
       { id: req.userId, role: req.userRole, tenantId: req.tenantId },
       query.data,
     )
+  })
+
+  // Returns all geocoded partners for the internal map — no map entity required
+  app.get('/pins', { preHandler }, async req => {
+    const { city, state, visibility, pinTypeId, geocodeStatus } = req.query as Record<string, string>
+    return mapRepository.findPins(req.tenantId, {
+      city: city || undefined,
+      state: state || undefined,
+      visibility: (visibility as 'public' | 'internal') || undefined,
+      pinTypeId: pinTypeId || undefined,
+      geocodeStatus: (geocodeStatus as 'pending' | 'done' | 'failed') || undefined,
+    })
   })
 
   app.get('/columns', { preHandler }, async req => {
