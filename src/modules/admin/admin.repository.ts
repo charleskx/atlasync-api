@@ -1,6 +1,6 @@
-import { and, count, desc, eq, isNull, isNotNull, sql } from 'drizzle-orm'
+import { and, count, desc, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '../../config/database'
-import { importJobs, partners, subscriptions, tenants, users } from '../../db/schema'
+import { importJobs, partners, subscriptions, tenants, totpRecoveryCodes, users } from '../../db/schema'
 
 export const adminRepository = {
   async listTenants() {
@@ -101,6 +101,32 @@ export const adminRepository = {
       .update(importJobs)
       .set({ rolledBackAt: new Date() })
       .where(and(eq(importJobs.id, jobId), eq(importJobs.tenantId, tenantId)))
+  },
+
+  async listTenantUsers(tenantId: string) {
+    return db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        totpEnabled: users.totpEnabled,
+        createdAt: users.createdAt,
+      })
+      .from(users)
+      .where(and(eq(users.tenantId, tenantId), isNull(users.deletedAt)))
+      .orderBy(users.createdAt)
+  },
+
+  async disable2fa(userId: string) {
+    await db
+      .update(users)
+      .set({ totpEnabled: false, totpSecret: null, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+
+    await db
+      .delete(totpRecoveryCodes)
+      .where(eq(totpRecoveryCodes.userId, userId))
   },
 
   async getMetrics() {

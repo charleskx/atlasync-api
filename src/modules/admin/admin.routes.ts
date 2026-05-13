@@ -32,6 +32,17 @@ export async function adminRoutes(app: FastifyInstance) {
     return adminService.listTenantImports(id, { role: req.userRole })
   })
 
+  app.get('/tenants/:id/users', async req => {
+    const { id } = req.params as { id: string }
+    return adminService.listTenantUsers(id, { role: req.userRole })
+  })
+
+  app.delete('/tenants/:tenantId/users/:userId/2fa', async (req, reply) => {
+    const { tenantId, userId } = req.params as { tenantId: string; userId: string }
+    await adminService.disable2fa(userId, tenantId, { role: req.userRole })
+    return reply.status(204).send()
+  })
+
   app.post('/tenants/:tenantId/imports/:jobId/rollback', async (req, reply) => {
     const { tenantId, jobId } = req.params as { tenantId: string; jobId: string }
     await adminService.rollbackImport(jobId, tenantId, { role: req.userRole })
