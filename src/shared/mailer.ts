@@ -47,3 +47,48 @@ export function inviteEmailHtml(inviterName: string, token: string, appUrl: stri
 <p><a href="${link}">${link}</a></p>
 <p>Válido por 7 dias.</p>`
 }
+
+export function importDoneHtml(opts: {
+  uploaderName: string
+  fileName: string
+  totalRows: number
+  created: number
+  updated: number
+  removed: number
+  failed: number
+  appUrl: string
+}): string {
+  const { uploaderName, fileName, totalRows, created, updated, removed, failed, appUrl } = opts
+  const modeLabel = removed > 0 ? 'substituição total' : 'incremental'
+  return `
+<p>Olá!</p>
+<p>A importação do arquivo <strong>${fileName}</strong> iniciada por <strong>${uploaderName}</strong> foi concluída com sucesso.</p>
+<table style="border-collapse:collapse;width:100%;max-width:400px;margin:16px 0">
+  <tr style="background:#f5f5f5">
+    <td style="padding:8px 12px;font-weight:600">Total de linhas</td>
+    <td style="padding:8px 12px">${totalRows}</td>
+  </tr>
+  <tr>
+    <td style="padding:8px 12px;font-weight:600">Criados</td>
+    <td style="padding:8px 12px;color:#16a34a">${created}</td>
+  </tr>
+  <tr style="background:#f5f5f5">
+    <td style="padding:8px 12px;font-weight:600">Atualizados</td>
+    <td style="padding:8px 12px">${updated}</td>
+  </tr>
+  ${removed > 0 ? `<tr>
+    <td style="padding:8px 12px;font-weight:600">Removidos</td>
+    <td style="padding:8px 12px;color:#dc2626">${removed}</td>
+  </tr>` : ''}
+  ${failed > 0 ? `<tr style="background:#f5f5f5">
+    <td style="padding:8px 12px;font-weight:600">Erros</td>
+    <td style="padding:8px 12px;color:#dc2626">${failed}</td>
+  </tr>` : ''}
+  <tr ${removed > 0 || failed > 0 ? '' : 'style="background:#f5f5f5"'}>
+    <td style="padding:8px 12px;font-weight:600">Modo</td>
+    <td style="padding:8px 12px;text-transform:capitalize">${modeLabel}</td>
+  </tr>
+</table>
+<p><a href="${appUrl}/import">Ver detalhes da importação</a></p>
+`
+}

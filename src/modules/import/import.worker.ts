@@ -1,9 +1,12 @@
 import { Worker } from 'bullmq'
 import { redis } from '../../config/redis'
+import { env } from '../../config/env'
 import { geocodingQueue } from '../../queues/geocoding.queue'
 import type { ImportJobPayload } from '../../queues/import.queue'
+import { importDoneHtml, sendMail } from '../../shared/mailer'
 import { partnerRepository } from '../partner/partner.repository'
 import { pinTypeRepository } from '../pin-type/pin-type.repository'
+import { userRepository } from '../user/user.repository'
 import { importRepository } from './import.repository'
 
 const PROGRESS_BATCH = 10
@@ -106,12 +109,64 @@ export function createImportWorker() {
         errorLog: errorLog.length > 0 ? errorLog : null,
         finishedAt: new Date(),
       })
+
+      // Send email notifications to uploader + owner
+      await sendImportDoneEmails({ jobId, tenantId, created, updated, removed, failed, totalRows: rows.length })
     },
     {
       connection: redis,
       concurrency: 2,
     },
   )
+}
+
+async function sendImportDoneEmails(opts: {
+  jobId: string
+  tenantId: string
+  created: number
+  updated: number
+  removed: number
+  failed: number
+  totalRows: number
+}) {
+  try {
+    const { jobId, tenantId, created, updated, removed, failed, totalRows } = opts
+
+    const [job, owner] = await Promise.all([
+      importRepository.findByIdGlobal(jobId),
+      userRepository.findOwner(tenantId),
+    ])
+
+    if (!job) return
+
+    const uploader = await userRepository.findById(job.userId, tenantId)
+    if (!uploader) return
+
+    const appUrl = env.APP_URL ?? 'https://app.atlasync.com.br'
+    const html = importDoneHtml({
+      uploaderName: uploader.name,
+      fileName: job.fileName ?? 'planilha',
+      totalRows,
+      created,
+      updated,
+      removed,
+      failed,
+      appUrl,
+    })
+
+    const subject = `✅ Importação concluída — ${job.fileName ?? 'planilha'}`
+
+    // Always notify the uploader
+    await sendMail({ to: uploader.email, subject, html })
+
+    // Notify the owner if different from uploader
+    if (owner && owner.id !== uploader.id) {
+      await sendMail({ to: owner.email, subject, html })
+    }
+  } catch (err) {
+    // Email failure must never break the import job itself
+    console.error('[import-worker] Falha ao enviar e-mail de conclusão:', err)
+  }
 }
 
 async function softDeleteStale(tenantId: string, processedKeys: Set<string>, jobId: string): Promise<number> {

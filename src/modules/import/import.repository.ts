@@ -43,4 +43,10 @@ export const importRepository = {
       limit: 50,
     })
   },
+
+  async findByIdGlobal(id: string) {
+    return db.query.importJobs.findFirst({
+      where: eq(importJobs.id, id),
+    })
+  },
 }

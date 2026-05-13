@@ -47,4 +47,13 @@ export const userRepository = {
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(and(eq(users.id, id), eq(users.tenantId, tenantId)))
   },
+
+  async findOwner(tenantId: string) {
+    const [owner] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.tenantId, tenantId), eq(users.role, 'owner'), isNull(users.deletedAt)))
+      .limit(1)
+    return owner ?? null
+  },
 }
