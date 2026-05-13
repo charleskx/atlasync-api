@@ -238,13 +238,6 @@ export const partnerRepository = {
       orderBy: (c, { asc }) => [asc(c.sortOrder), asc(c.label)],
     })
   },
-
-  async updateColumn(columnId: string, tenantId: string, data: { readonly: boolean }) {
-    await db
-      .update(partnerColumns)
-      .set({ readonly: data.readonly, updatedAt: new Date() })
-      .where(and(eq(partnerColumns.id, columnId), eq(partnerColumns.tenantId, tenantId)))
-  },
 }
 
 type PartnerRow = {

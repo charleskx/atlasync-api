@@ -34,14 +34,6 @@ export async function partnerRoutes(app: FastifyInstance) {
     return partnerService.getColumns({ id: req.userId, role: req.userRole, tenantId: req.tenantId })
   })
 
-  app.patch('/columns/:columnId', { preHandler }, async (req, reply) => {
-    const { columnId } = req.params as { columnId: string }
-    const { readonly } = req.body as { readonly: boolean }
-    if (typeof readonly !== 'boolean') throw new AppError('VALIDATION_ERROR', 400, 'readonly deve ser boolean')
-    await partnerService.updateColumn(columnId, req.tenantId, { readonly })
-    return reply.status(204).send()
-  })
-
   app.get('/:id', { preHandler }, async req => {
     const { id } = req.params as { id: string }
     return partnerService.getById(id, {
