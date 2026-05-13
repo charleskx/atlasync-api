@@ -1,5 +1,8 @@
 import dayjs from 'dayjs'
+import { eq } from 'drizzle-orm'
 import type { FastifyInstance } from 'fastify'
+import { db } from '../../config/database'
+import { subscriptions, users } from '../../db/schema'
 import { authenticate } from '../../middlewares/authenticate'
 import { AppError } from '../../shared/errors'
 import { generateToken } from '../../shared/utils'
@@ -180,5 +183,37 @@ export async function authRoutes(app: FastifyInstance) {
     })
 
     return { accessToken, refreshToken: refreshTokenValue }
+  })
+
+  // Endpoint sem subscriptionGuard — usado pelo frontend para carregar o usuário logado
+  // independente do status da assinatura, garantindo acesso à tela de billing mesmo com conta cancelada
+  app.get('/me', { preHandler: [authenticate] }, async (req) => {
+    const [user] = await db
+      .select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        tenantId: users.tenantId,
+        emailVerified: users.emailVerified,
+        totpEnabled: users.totpEnabled,
+      })
+      .from(users)
+      .where(eq(users.id, req.userId))
+      .limit(1)
+
+    if (!user) throw new AppError('USER_NOT_FOUND', 404)
+
+    const [sub] = await db
+      .select({ status: subscriptions.status })
+      .from(subscriptions)
+      .where(eq(subscriptions.tenantId, req.tenantId))
+      .limit(1)
+
+    return {
+      ...user,
+      twoFactorEnabled: user.totpEnabled,
+      subscriptionStatus: sub?.status ?? null,
+    }
   })
 }
