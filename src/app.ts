@@ -8,6 +8,7 @@ import { env } from './config/env'
 import { redis } from './config/redis'
 import { adminRoutes } from './modules/admin/admin.routes'
 import { notificationsRoutes } from './modules/notifications/notifications.routes'
+import { ticketsRoutes } from './modules/tickets/tickets.routes'
 import { authRoutes } from './modules/auth/auth.routes'
 import { billingRoutes } from './modules/billing/billing.routes'
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes'
@@ -92,6 +93,7 @@ export async function buildApp() {
   await app.register(exportRoutes, { prefix: '/export' })
   await app.register(adminRoutes, { prefix: '/admin' })
   await app.register(notificationsRoutes, { prefix: '/notifications' })
+  await app.register(ticketsRoutes, { prefix: '/tickets' })
 
   return app
 }

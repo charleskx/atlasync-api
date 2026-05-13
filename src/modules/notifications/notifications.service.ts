@@ -2,18 +2,23 @@ import { notificationsRepository } from './notifications.repository'
 
 export type NotificationItem = {
   id: string
-  type: 'import_done' | 'import_failed' | 'geocoding_failures' | 'trial_expiring'
+  type: 'import_done' | 'import_failed' | 'geocoding_failures' | 'trial_expiring' | 'ticket_reply' | 'new_ticket'
   title: string
   desc: string
   createdAt: string
 }
 
 export const notificationsService = {
-  async list(tenantId: string): Promise<NotificationItem[]> {
-    const [imports, geocodingFailures, trialDaysLeft] = await Promise.all([
-      notificationsRepository.getRecentImports(tenantId),
-      notificationsRepository.getGeocodingFailures(tenantId),
-      notificationsRepository.getTrialDaysLeft(tenantId),
+  async list(tenantId: string, role?: string): Promise<NotificationItem[]> {
+    const isSuperAdmin = role === 'super_admin'
+
+    const [imports, geocodingFailures, trialDaysLeft, ticketData] = await Promise.all([
+      isSuperAdmin ? Promise.resolve([]) : notificationsRepository.getRecentImports(tenantId),
+      isSuperAdmin ? Promise.resolve(0) : notificationsRepository.getGeocodingFailures(tenantId),
+      isSuperAdmin ? Promise.resolve(null) : notificationsRepository.getTrialDaysLeft(tenantId),
+      isSuperAdmin
+        ? notificationsRepository.getOpenTickets()
+        : notificationsRepository.getRecentStaffReplies(tenantId),
     ])
 
     const items: NotificationItem[] = []
@@ -63,6 +68,33 @@ export const notificationsService = {
         desc: 'Assine um plano para continuar usando o AtlaSync.',
         createdAt: new Date().toISOString(),
       })
+    }
+
+    // Ticket notifications
+    if (isSuperAdmin) {
+      // Super admin: open tickets waiting for reply
+      const openTickets = ticketData as { id: string; title: string; createdAt: Date }[]
+      for (const t of openTickets) {
+        items.push({
+          id: `ticket-open-${t.id}`,
+          type: 'new_ticket',
+          title: 'Novo ticket de suporte',
+          desc: t.title,
+          createdAt: t.createdAt.toISOString(),
+        })
+      }
+    } else {
+      // Regular users: staff replies on their tenant's tickets
+      const staffReplies = ticketData as { id: string; ticketId: string; ticketTitle: string; createdAt: Date }[]
+      for (const r of staffReplies) {
+        items.push({
+          id: `ticket-reply-${r.id}`,
+          type: 'ticket_reply',
+          title: 'Resposta no seu ticket',
+          desc: r.ticketTitle,
+          createdAt: r.createdAt.toISOString(),
+        })
+      }
     }
 
     // Sort by most recent first

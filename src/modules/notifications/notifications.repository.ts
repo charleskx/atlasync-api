@@ -1,6 +1,7 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { db } from '../../config/database'
 import { importJobs, partners, subscriptions } from '../../db/schema'
+import { ticketsRepository } from '../tickets/tickets.repository'
 
 export const notificationsRepository = {
   async getRecentImports(tenantId: string) {
@@ -42,6 +43,9 @@ export const notificationsRepository = {
       )
     return row?.count ?? 0
   },
+
+  getRecentStaffReplies: (tenantId: string) => ticketsRepository.getRecentStaffReplies(tenantId),
+  getOpenTickets: () => ticketsRepository.countOpenTickets(),
 
   async getTrialDaysLeft(tenantId: string) {
     const sub = await db.query.subscriptions.findFirst({
