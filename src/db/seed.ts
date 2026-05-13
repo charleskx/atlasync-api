@@ -4,6 +4,7 @@ import argon2 from 'argon2'
 import dayjs from 'dayjs'
 import { db } from '../config/database'
 import {
+  geocodingLogs,
   importJobs,
   maps,
   partnerColumns,
@@ -13,6 +14,8 @@ import {
   subscriptions,
   tenantSettings,
   tenants,
+  ticketMessages,
+  tickets,
   users,
 } from './schema'
 
@@ -50,6 +53,10 @@ function randCoordOffset(base: number, range = 0.3) {
 }
 
 async function clearAll() {
+  // delete in dependency order (children before parents)
+  await db.delete(ticketMessages)
+  await db.delete(tickets)
+  await db.delete(geocodingLogs)
   await db.delete(importJobs)
   await db.delete(partnerValues)
   await db.delete(partnerColumns)

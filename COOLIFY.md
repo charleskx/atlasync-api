@@ -1,6 +1,6 @@
 # Deploy no Coolify — Guia Passo a Passo
 
-Este guia cobre o deploy completo da Atlasync API no Coolify, incluindo banco PostgreSQL com PostGIS, Redis, a API principal e o worker de filas.
+Este guia cobre o deploy completo da Atlasync API no Coolify, incluindo banco PostgreSQL com PostGIS, Redis, a API principal e o worker de filas — ambos configurados para reiniciar automaticamente em caso de falha.
 
 ---
 
@@ -116,7 +116,9 @@ openssl rand -base64 48
 2. Adicione o domínio: `api.seudominio.com`
 3. Habilite **HTTPS** (Coolify provisiona o certificado Let's Encrypt automaticamente)
 
-### 4.5 Configurar Health Check
+### 4.5 Configurar o Health Check
+
+O health check permite que o Docker/Coolify detecte quando a API travou ou parou de responder e reinicie automaticamente o container.
 
 Em **Advanced** → **Health Check**:
 
@@ -124,8 +126,25 @@ Em **Advanced** → **Health Check**:
 - **Interval**: `30s`
 - **Timeout**: `10s`
 - **Retries**: `3`
+- **Start Period**: `30s` _(tempo de tolerância na inicialização antes de contar falhas)_
 
-### 4.6 Deploy
+Com essa configuração, se a API deixar de responder por 3 verificações consecutivas (90 segundos), o Docker reinicia o container automaticamente.
+
+### 4.6 Configurar o Restart Policy (auto-restart)
+
+Essa é a configuração que garante que a API sobe automaticamente caso o processo caia ou o servidor reinicie.
+
+Em **Advanced** → **Restart Policy**:
+
+- Selecione **`unless-stopped`**
+
+> **Diferença entre as opções:**
+> - `no` — nunca reinicia (padrão Docker, inadequado para produção)
+> - `always` — sempre reinicia, inclusive ao reiniciar o servidor manualmente pelo Coolify
+> - `unless-stopped` — reinicia sempre, exceto quando você para manualmente pelo painel **(recomendado)**
+> - `on-failure` — reinicia apenas em crash (não reinicia após reboot do servidor)
+
+### 4.7 Deploy
 
 1. Clique em **Save** e depois em **Deploy**
 2. Acompanhe os logs em tempo real na aba **Deployments**
@@ -135,49 +154,115 @@ Em **Advanced** → **Health Check**:
 
 ## 5. Aplicar o schema no banco (primeira vez)
 
-Após o primeiro deploy, você precisa criar as tabelas. Acesse o terminal do container da API:
-
-1. No serviço da API, clique em **Terminal** (ou use a aba **Exec**)
-2. Execute:
-   ```bash
-   node -e "require('./dist/src/db/schema')" 2>/dev/null; npx drizzle-kit push
-   ```
-
-**Alternativa mais simples**: adicione um **Pre-Deploy Command** (configuração única):
+Após o primeiro deploy, você precisa criar as tabelas. A maneira mais simples é adicionar um **Pre-Deploy Command** que roda automaticamente a cada deploy:
 
 Em **Advanced** → **Pre-Deploy Command**:
 ```
 npm run db:push
 ```
 
-Isso garante que o schema é sincronizado automaticamente a cada deploy.
+Isso garante que o schema é sincronizado automaticamente a cada deploy, sem precisar acessar o terminal manualmente.
+
+**Alternativa manual** (via terminal do container):
+```bash
+npx drizzle-kit push
+```
 
 ---
 
 ## 6. Deploy do Worker de Filas
 
-O worker processa jobs de import e geocoding em background. Ele precisa rodar como um serviço separado.
+O worker processa jobs de importação e geocoding em background. Ele precisa rodar como um **serviço separado** e, assim como a API, deve reiniciar automaticamente em caso de falha.
+
+### 6.1 Criar o serviço
 
 1. Em `production`, clique em **New Resource** → **Application**
 2. Selecione o **mesmo repositório** e a branch `main`
-3. Configure:
-   - **Build Pack**: `Nixpacks`
-   - **Install Command**: `npm ci`
-   - **Build Command**: `npm run build`
-   - **Start Command**: `node dist/worker.js`
-   - **Port**: deixe em branco (o worker não expõe porta HTTP)
+3. Dê o nome `atlasync-worker` para diferenciar da API
 
-4. Adicione as **mesmas variáveis de ambiente** da API (especialmente `DATABASE_URL` e `REDIS_URL`)
+### 6.2 Configurar o Build
 
-5. Em **Domains**, **não adicione domínio** (serviço interno)
+- **Build Pack**: `Nixpacks`
+- **Install Command**: `npm ci`
+- **Build Command**: `npm run build`
+- **Start Command**: `node dist/worker.js`
+- **Port**: deixe **em branco** — o worker não expõe porta HTTP
 
-6. Clique em **Save** e **Deploy**
+### 6.3 Variáveis de ambiente
 
-> O worker e a API compartilham as filas BullMQ via Redis. Você pode escalar o worker independentemente da API.
+Adicione as **mesmas variáveis de ambiente** da API. No mínimo as obrigatórias para o worker:
+
+```env
+NODE_ENV=production
+DATABASE_URL=postgresql://atlasync:SENHA@postgresql-XXXXX:5432/atlasync
+REDIS_URL=redis://default:SENHA@redis-XXXXX:6379
+```
+
+As demais variáveis (Stripe, Google Maps, etc.) também devem ser incluídas pois o worker pode disparar e-mails e integrar com serviços externos durante o processamento de jobs.
+
+### 6.4 Domínio
+
+Em **Domains**, **não adicione domínio** — o worker é um serviço interno sem endpoint HTTP.
+
+### 6.5 Configurar o Restart Policy (auto-restart)
+
+Assim como a API, o worker deve reiniciar automaticamente.
+
+Em **Advanced** → **Restart Policy**:
+
+- Selecione **`unless-stopped`**
+
+> O worker não tem health check HTTP (não expõe porta), mas o Docker monitora o processo Node.js diretamente. Se o processo encerrar com qualquer código de saída diferente de zero — crash, erro não tratado, OOM — o Docker reinicia o container automaticamente graças à restart policy.
+
+### 6.6 Health Check do Worker
+
+Como o worker não tem endpoint HTTP, configure um health check baseado em **comando**:
+
+Em **Advanced** → **Health Check**:
+
+- **Type**: `Command`
+- **Command**:
+  ```
+  node -e "const { createClient } = require('redis'); const c = createClient({ url: process.env.REDIS_URL }); c.connect().then(() => { c.quit(); process.exit(0) }).catch(() => process.exit(1))"
+  ```
+- **Interval**: `60s`
+- **Timeout**: `10s`
+- **Retries**: `3`
+
+Esse comando verifica se o worker consegue se conectar ao Redis (dependência crítica). Se falhar 3 vezes consecutivas, o container é reiniciado.
+
+> **Alternativa simples**: se o Coolify não permitir health check por comando em Applications, deixe o campo em branco e confie apenas na restart policy. O Docker reiniciará o worker caso o processo encerre inesperadamente.
+
+### 6.7 Deploy
+
+1. Clique em **Save** e depois em **Deploy**
+2. Nos logs, você deve ver:
+   ```
+   [worker] Import worker iniciado
+   [worker] Geocoding worker iniciado
+   ```
+3. O worker está pronto quando não aparecerem erros de conexão com Redis ou banco
 
 ---
 
-## 7. Configurar o Webhook do Stripe
+## 7. Verificar o Auto-restart
+
+Para confirmar que ambos os serviços reiniciam automaticamente:
+
+1. No painel Coolify, vá ao serviço **atlasync-api**
+2. Em **Terminal**, execute:
+   ```bash
+   kill 1
+   ```
+   Isso encerra o processo principal do container
+3. Aguarde 10-20 segundos e observe o container subir automaticamente na aba **Logs**
+4. Repita o teste no serviço **atlasync-worker**
+
+> O tempo de reinicialização depende do Docker e do tempo de boot do Node.js (~5-10 segundos).
+
+---
+
+## 8. Configurar o Webhook do Stripe
 
 Para que os eventos do Stripe cheguem à API:
 
@@ -195,23 +280,7 @@ Para que os eventos do Stripe cheguem à API:
 
 ---
 
-## 8. Verificações finais
-
-Após o deploy, teste os endpoints principais:
-
-```bash
-# Health check
-curl https://api.seudominio.com/health
-
-# Registro de novo tenant
-curl -X POST https://api.seudominio.com/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"tenantName":"Minha Empresa","name":"João Silva","email":"joao@empresa.com","password":"minhasenha123"}'
-```
-
----
-
-## 9. Atualizações futuras
+## 9. Atualizações futuras (Auto Deploy)
 
 O Coolify suporta **Auto Deploy** via webhook do GitHub/GitLab:
 
@@ -219,8 +288,11 @@ O Coolify suporta **Auto Deploy** via webhook do GitHub/GitLab:
 2. Copie a URL do webhook do Coolify
 3. No GitHub, vá em **Settings** → **Webhooks** → **Add webhook**
 4. Cole a URL e selecione o evento **Push**
+5. Repita para o serviço do **worker** (mesmo repositório, webhook diferente)
 
-A partir daí, todo push na branch `main` dispara um novo deploy automaticamente.
+A partir daí, todo push na branch `main` dispara um novo deploy de ambos os serviços automaticamente.
+
+> **Ordem de deploy**: o Coolify faz o deploy de cada serviço de forma independente. Se precisar garantir que a API sobe antes do worker, use o campo **Depends On** em **Advanced** do serviço worker e aponte para o serviço da API.
 
 ---
 
@@ -229,12 +301,22 @@ A partir daí, todo push na branch `main` dispara um novo deploy automaticamente
 ```
 Coolify Project: atlasync
 └── Environment: production
-    ├── Database: postgis/postgis:15-3.4  ← port 5432 (interno)
-    ├── Database: Redis 7                 ← port 6379 (interno)
+    ├── Database: postgis/postgis:15-3.4  ← porta 5432 (interno)
+    │             restart: unless-stopped
+    │
+    ├── Database: Redis 7                 ← porta 6379 (interno)
+    │             restart: unless-stopped
+    │
     ├── App: atlasync-api                 ← porta 3000, domínio público
-    │         node dist/server.js
+    │         start:   node dist/server.js
+    │         restart: unless-stopped
+    │         health:  GET /health (30s interval, 3 retries)
+    │         pre-deploy: npm run db:push
+    │
     └── App: atlasync-worker              ← sem porta, sem domínio
-              node dist/worker.js
+              start:   node dist/worker.js
+              restart: unless-stopped
+              health:  redis ping via command (60s interval, 3 retries)
 ```
 
 ---
@@ -248,7 +330,19 @@ Verifique se o `NODE_ENV=production` está definido e rode `npm run build` local
 Certifique-se de usar a URL **interna** do Coolify (nome do container), não a URL pública. A URL interna só funciona entre serviços dentro da mesma network do Docker.
 
 **Worker não processa jobs**
-Verifique se o `REDIS_URL` no worker aponta para o mesmo Redis da API. Acesse a aba **Logs** do serviço worker para ver erros de conexão.
+Verifique se o `REDIS_URL` no worker aponta para o mesmo Redis da API. Acesse a aba **Logs** do serviço worker para ver erros de conexão. Confirme também que o worker está com status **Running** (não apenas **Deployed**).
+
+**Container não reinicia após crash**
+Confirme que a **Restart Policy** está definida como `unless-stopped` e não `no`. No terminal do servidor, você pode verificar com:
+```bash
+docker inspect <container_id> | grep RestartPolicy
+```
+
+**Worker cai em loop (restart loop)**
+Se o worker reiniciar repetidamente, há um erro na inicialização. Acesse **Logs** do serviço e procure o erro antes do shutdown. Causas comuns: `REDIS_URL` inválido, `DATABASE_URL` incorreto, ou variável de ambiente faltando.
 
 **Stripe webhook retorna 400**
-Confirme que o `STRIPE_WEBHOOK_SECRET` no Coolify corresponde exatamente ao secret exibido no dashboard do Stripe para aquele endpoint. O `whsec_` faz parte da string.
+Confirme que o `STRIPE_WEBHOOK_SECRET` no Coolify corresponde exatamente ao secret exibido no dashboard do Stripe para aquele endpoint. O prefixo `whsec_` faz parte da string.
+
+**API sobe mas retorna 502 Bad Gateway**
+Aguarde o **Start Period** (30s) do health check antes de concluir que há problema. Se persistir, verifique se a porta `3000` está corretamente configurada no serviço e se o processo está escutando em `0.0.0.0` e não em `127.0.0.1`.

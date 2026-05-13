@@ -18,9 +18,12 @@ export const updatePartnerSchema = z.object({
 })
 
 export const listPartnersSchema = z.object({
+  search: z.string().optional(),
   visibility: z.enum(['public', 'internal']).optional(),
   pinTypeId: z.string().uuid().optional(),
   geocodeStatus: z.enum(['pending', 'done', 'failed']).optional(),
+  source: z.enum(['dashboard', 'import']).optional(),
+  city: z.string().optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(200).default(50),
 })

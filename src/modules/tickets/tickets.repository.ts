@@ -16,6 +16,7 @@ export const ticketsRepository = {
       .select({
         id: tickets.id,
         title: tickets.title,
+        body: tickets.body,
         status: tickets.status,
         createdAt: tickets.createdAt,
         updatedAt: tickets.updatedAt,
@@ -33,6 +34,7 @@ export const ticketsRepository = {
       .select({
         id: tickets.id,
         title: tickets.title,
+        body: tickets.body,
         status: tickets.status,
         tenantId: tickets.tenantId,
         createdAt: tickets.createdAt,

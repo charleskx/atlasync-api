@@ -31,8 +31,8 @@ export const notificationsRepository = {
   },
 
   async getGeocodingFailures(tenantId: string) {
-    const [row] = await db
-      .select({ count: sql<number>`count(*)::int` })
+    const rows = await db
+      .select({ id: partners.id, name: partners.name })
       .from(partners)
       .where(
         and(
@@ -41,7 +41,8 @@ export const notificationsRepository = {
           isNull(partners.deletedAt),
         ),
       )
-    return row?.count ?? 0
+      .limit(50)
+    return rows
   },
 
   getRecentStaffReplies: (tenantId: string) => ticketsRepository.getRecentStaffReplies(tenantId),

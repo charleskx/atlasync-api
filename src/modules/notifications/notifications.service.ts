@@ -14,7 +14,7 @@ export const notificationsService = {
 
     const [imports, geocodingFailures, trialDaysLeft, ticketData] = await Promise.all([
       isSuperAdmin ? Promise.resolve([]) : notificationsRepository.getRecentImports(tenantId),
-      isSuperAdmin ? Promise.resolve(0) : notificationsRepository.getGeocodingFailures(tenantId),
+      isSuperAdmin ? Promise.resolve([]) : notificationsRepository.getGeocodingFailures(tenantId),
       isSuperAdmin ? Promise.resolve(null) : notificationsRepository.getTrialDaysLeft(tenantId),
       isSuperAdmin
         ? notificationsRepository.getOpenTickets()
@@ -49,12 +49,16 @@ export const notificationsService = {
     }
 
     // Geocoding failures
-    if (geocodingFailures > 0) {
+    const failedPartners = geocodingFailures as { id: string; name: string }[]
+    if (failedPartners.length > 0) {
+      const count = failedPartners.length
+      const preview = failedPartners.slice(0, 3).map(p => p.name).join(', ')
+      const extra = count > 3 ? ` e mais ${count - 3}` : ''
       items.push({
         id: 'geocoding-failures',
         type: 'geocoding_failures',
-        title: `${geocodingFailures} endereço${geocodingFailures > 1 ? 's' : ''} sem localização`,
-        desc: 'Alguns parceiros não foram geocodificados. Verifique os endereços.',
+        title: `${count} parceiro${count > 1 ? 's' : ''} com endereço não localizado`,
+        desc: `${preview}${extra} — clique para ver detalhes e corrigir`,
         createdAt: new Date().toISOString(),
       })
     }

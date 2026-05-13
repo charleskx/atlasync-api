@@ -37,10 +37,17 @@ export async function geocodeAddress(address: string): Promise<FullGeoResult | n
     },
   })
 
-  if (!res.ok) return null
+  // HTTP error → throw so the worker catch block records it as 'failed'
+  if (!res.ok) {
+    throw new Error(`Nominatim retornou HTTP ${res.status} (${res.statusText}) para o endereço "${address}"`)
+  }
 
   const data = (await res.json()) as NominatimResult[]
-  if (!data[0]) return null
+
+  // Empty result → return null so worker records it as 'no_results'
+  if (!data[0]) {
+    throw new Error(`Nominatim não encontrou resultados para o endereço "${address}"`)
+  }
 
   const { lat, lon, address: addr } = data[0]
   const city = addr.city ?? addr.town ?? addr.village ?? addr.municipality ?? addr.county

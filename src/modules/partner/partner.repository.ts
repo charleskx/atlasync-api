@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, ilike, inArray, isNull, or, sql } from 'drizzle-orm'
 import { db } from '../../config/database'
 import { partnerColumns, partnerValues, partners, pinTypes } from '../../db/schema'
 import { slugify } from '../../shared/utils'
@@ -6,13 +6,19 @@ import type { CreatePartnerInput, ListPartnersInput, UpdatePartnerInput } from '
 
 export const partnerRepository = {
   async findAll(tenantId: string, filters: ListPartnersInput) {
-    const { page, limit, visibility, pinTypeId, geocodeStatus } = filters
+    const { page, limit, search, visibility, pinTypeId, geocodeStatus, source, city } = filters
     const offset = (page - 1) * limit
 
     const conditions = [eq(partners.tenantId, tenantId), isNull(partners.deletedAt)]
+    if (search) {
+      const term = `%${search}%`
+      conditions.push(or(ilike(partners.name, term), ilike(partners.address, term))!)
+    }
     if (visibility) conditions.push(eq(partners.visibility, visibility))
     if (pinTypeId) conditions.push(eq(partners.pinTypeId, pinTypeId))
     if (geocodeStatus) conditions.push(eq(partners.geocodeStatus, geocodeStatus))
+    if (source) conditions.push(eq(partners.source, source))
+    if (city) conditions.push(ilike(partners.city, `%${city}%`))
 
     const [countRow, rows] = await Promise.all([
       db
