@@ -1,6 +1,6 @@
-# Atlasync API
+# MappaHub API
 
-Backend do Atlasync — plataforma SaaS multi-tenant de gestão geográfica de parceiros e pontos de venda.
+Backend do MappaHub — plataforma SaaS multi-tenant de gestão geográfica de parceiros e pontos de venda.
 
 ## Stack
 
@@ -104,19 +104,19 @@ A API sobe em `http://localhost:3000`. Endpoint de health: `GET /health`.
 
 ```
 Super Admin
-  email: superadmin@atlasync.dev
+  email: superadmin@mappahub.dev
   senha: superadmin@123
 
 Tenant 1 — Distribuidora Alfa (plano ativo, 40 parceiros)
-  email: owner-XXXXXX@atlasync-seed.dev
+  email: owner-XXXXXX@mappahub-seed.dev
   senha: senha@123
 
 Tenant 2 — Rede Beta (trial, 15 parceiros)
-  email: owner-XXXXXX@atlasync-seed.dev
+  email: owner-XXXXXX@mappahub-seed.dev
   senha: senha@123
 
 Tenant 3 — Gama Corp (cancelado, 5 parceiros)
-  email: owner-XXXXXX@atlasync-seed.dev
+  email: owner-XXXXXX@mappahub-seed.dev
   senha: senha@123
 ```
 

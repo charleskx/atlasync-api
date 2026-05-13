@@ -69,7 +69,7 @@ export const notificationsService = {
         id: 'trial-expiring',
         type: 'trial_expiring',
         title: trialDaysLeft === 0 ? 'Seu trial expirou' : `Trial expira em ${trialDaysLeft} dia${trialDaysLeft > 1 ? 's' : ''}`,
-        desc: 'Assine um plano para continuar usando o AtlaSync.',
+        desc: 'Assine um plano para continuar usando o MappaHub.',
         createdAt: new Date().toISOString(),
       })
     }

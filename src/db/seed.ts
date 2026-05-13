@@ -115,7 +115,7 @@ async function createUsers(tenantId: string) {
     .values({
       tenantId,
       name: faker.person.fullName(),
-      email: `owner-${tenantId.slice(0, 6)}@atlasync-seed.dev`,
+      email: `owner-${tenantId.slice(0, 6)}@mappahub-seed.dev`,
       passwordHash,
       role: 'owner',
       emailVerified: true,
@@ -244,9 +244,9 @@ async function createSuperAdmin() {
   const [tenant] = await db
     .insert(tenants)
     .values({
-      name: 'Atlasync Internal',
-      slug: 'atlasync-internal',
-      email: 'admin@atlasync.dev',
+      name: 'MappaHub Internal',
+      slug: 'mappahub-internal',
+      email: 'admin@mappahub.dev',
       active: true,
       updatedAt: new Date(),
     })
@@ -268,7 +268,7 @@ async function createSuperAdmin() {
     .values({
       tenantId: tenant.id,
       name: 'Super Admin',
-      email: 'superadmin@atlasync.dev',
+      email: 'superadmin@mappahub.dev',
       passwordHash,
       role: 'super_admin',
       emailVerified: true,
@@ -287,7 +287,7 @@ async function main() {
   // ── Super Admin ──────────────────────────────────────────────────────────
   await createSuperAdmin()
   console.log('  ✓ Super admin criado')
-  console.log('    email: superadmin@atlasync.dev')
+  console.log('    email: superadmin@mappahub.dev')
   console.log('    senha: superadmin@123')
 
   // ── Tenant 1: plano ativo com muitos parceiros ───────────────────────────
@@ -303,7 +303,7 @@ async function main() {
   await createPartners(tenant1.id, cols1, pinTypes1, 40)
   await createMaps(tenant1.id)
   console.log('\n  ✓ Tenant 1 — Distribuidora Alfa Ltda (plano ativo, 40 parceiros)')
-  console.log(`    owner email: owner-${tenant1.id.slice(0, 6)}@atlasync-seed.dev`)
+  console.log(`    owner email: owner-${tenant1.id.slice(0, 6)}@mappahub-seed.dev`)
   console.log('    senha: senha@123')
 
   // ── Tenant 2: trial ──────────────────────────────────────────────────────
@@ -319,7 +319,7 @@ async function main() {
   await createPartners(tenant2.id, cols2, pinTypes2, 15)
   await createMaps(tenant2.id)
   console.log('\n  ✓ Tenant 2 — Rede Beta Franquias (trial, 15 parceiros)')
-  console.log(`    owner email: owner-${tenant2.id.slice(0, 6)}@atlasync-seed.dev`)
+  console.log(`    owner email: owner-${tenant2.id.slice(0, 6)}@mappahub-seed.dev`)
   console.log('    senha: senha@123')
 
   // ── Tenant 3: cancelado (para testar bloqueio) ───────────────────────────
@@ -334,7 +334,7 @@ async function main() {
   const pinTypes3 = await createPinTypes(tenant3.id)
   await createPartners(tenant3.id, cols3, pinTypes3, 5)
   console.log('\n  ✓ Tenant 3 — Gama Corp (assinatura cancelada, 5 parceiros)')
-  console.log(`    owner email: owner-${tenant3.id.slice(0, 6)}@atlasync-seed.dev`)
+  console.log(`    owner email: owner-${tenant3.id.slice(0, 6)}@mappahub-seed.dev`)
   console.log('    senha: senha@123')
 
   console.log('\n✅ Seed concluído com sucesso!\n')

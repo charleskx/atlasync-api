@@ -94,7 +94,7 @@ export const mapService = {
     }
 
     return {
-      snippet: `<div id="atlasync-map"></div>\n<script src="${baseUrl}/sdk/embed.js"></script>\n<script>\n  AtlasyncMap.init({ token: "${map.embedToken}", container: "atlasync-map" })\n</script>`,
+      snippet: `<div id="atlasync-map"></div>\n<script src="${baseUrl}/sdk/embed.js"></script>\n<script>\n  MappaHubMap.init({ token: "${map.embedToken}", container: "atlasync-map" })\n</script>`,
     }
   },
 

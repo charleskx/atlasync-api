@@ -59,7 +59,7 @@ function baseTemplate(opts: {
           <tr>
             <td align="center" style="padding-bottom:28px">
               <a href="${appUrl}" style="text-decoration:none;display:inline-block">
-                <span style="font-size:24px;font-weight:800;color:#1e1b4b;letter-spacing:-0.5px;line-height:1">AtlaSync<span style="color:#6366f1">.</span></span>
+                <span style="font-size:24px;font-weight:800;color:#1e1b4b;letter-spacing:-0.5px;line-height:1">MappaHub<span style="color:#6366f1">.</span></span>
               </a>
             </td>
           </tr>
@@ -97,13 +97,13 @@ function baseTemplate(opts: {
           <tr>
             <td style="text-align:center;padding:0 20px 8px">
               <p style="margin:0 0 8px;font-size:12px;color:#94a3b8;line-height:1.6">
-                Este e-mail foi enviado automaticamente pela plataforma <strong>AtlaSync</strong>.<br>
+                Este e-mail foi enviado automaticamente pela plataforma <strong>MappaHub</strong>.<br>
                 Não responda a este endereço de e-mail.
               </p>
               <p style="margin:0;font-size:12px;color:#cbd5e1">
                 <a href="${appUrl}" style="color:#6366f1;text-decoration:none;font-weight:500">app.atlasync.com.br</a>
                 &nbsp;·&nbsp;
-                <span>© ${new Date().getFullYear()} AtlaSync</span>
+                <span>© ${new Date().getFullYear()} MappaHub</span>
               </p>
             </td>
           </tr>
@@ -155,15 +155,15 @@ export function verifyEmailHtml(token: string, appUrl: string): string {
   const link = `${appUrl}/auth/verify?token=${token}`
 
   const body = `
-    ${paragraph(`Obrigado por se cadastrar no <strong>AtlaSync</strong>! Para ativar sua conta, confirme seu endereço de e-mail clicando no botão abaixo.`)}
+    ${paragraph(`Obrigado por se cadastrar no <strong>MappaHub</strong>! Para ativar sua conta, confirme seu endereço de e-mail clicando no botão abaixo.`)}
     ${ctaButton('Verificar meu e-mail', link)}
     <p style="margin:32px 0 0;padding:16px;background:#fef9c3;border-radius:8px;font-size:13px;color:#713f12;line-height:1.6;border:1px solid #fde68a">
-      ⏱ Este link é válido por <strong>24 horas</strong>. Se você não criou uma conta no AtlaSync, ignore este e-mail com segurança.
+      ⏱ Este link é válido por <strong>24 horas</strong>. Se você não criou uma conta no MappaHub, ignore este e-mail com segurança.
     </p>
   `
 
   return baseTemplate({
-    previewText: 'Confirme seu e-mail para ativar sua conta AtlaSync',
+    previewText: 'Confirme seu e-mail para ativar sua conta MappaHub',
     headerColor: '#6366f1',
     headerIcon: '✉️',
     title: 'Confirme seu e-mail',
@@ -176,7 +176,7 @@ export function resetPasswordHtml(token: string, appUrl: string): string {
   const link = `${appUrl}/auth/reset-password?token=${token}`
 
   const body = `
-    ${paragraph('Recebemos uma solicitação para redefinir a senha da sua conta AtlaSync. Clique no botão abaixo para criar uma nova senha.')}
+    ${paragraph('Recebemos uma solicitação para redefinir a senha da sua conta MappaHub. Clique no botão abaixo para criar uma nova senha.')}
     ${ctaButton('Redefinir minha senha', link, '#dc2626')}
     <p style="margin:32px 0 0;padding:16px;background:#fef2f2;border-radius:8px;font-size:13px;color:#7f1d1d;line-height:1.6;border:1px solid #fecaca">
       ⏱ Este link expira em <strong>1 hora</strong>. Se você não solicitou a redefinição de senha, ignore este e-mail — sua conta permanece segura.
@@ -184,7 +184,7 @@ export function resetPasswordHtml(token: string, appUrl: string): string {
   `
 
   return baseTemplate({
-    previewText: 'Redefina sua senha do AtlaSync',
+    previewText: 'Redefina sua senha do MappaHub',
     headerColor: '#dc2626',
     headerIcon: '🔐',
     title: 'Redefinição de senha',
@@ -197,7 +197,7 @@ export function inviteEmailHtml(inviterName: string, token: string, appUrl: stri
   const link = `${appUrl}/auth/accept-invite?token=${token}`
 
   const body = `
-    ${paragraph(`${highlight(inviterName)} convidou você para colaborar no <strong>AtlaSync</strong>, a plataforma de gestão de parceiros e mapas geográficos.`)}
+    ${paragraph(`${highlight(inviterName)} convidou você para colaborar no <strong>MappaHub</strong>, a plataforma de gestão de parceiros e mapas geográficos.`)}
     ${paragraph('Clique no botão abaixo para aceitar o convite, definir sua senha e começar a usar a plataforma.')}
     ${ctaButton('Aceitar convite', link)}
     <p style="margin:32px 0 0;padding:16px;background:#fef9c3;border-radius:8px;font-size:13px;color:#713f12;line-height:1.6;border:1px solid #fde68a">
@@ -206,7 +206,7 @@ export function inviteEmailHtml(inviterName: string, token: string, appUrl: stri
   `
 
   return baseTemplate({
-    previewText: `${inviterName} convidou você para o AtlaSync`,
+    previewText: `${inviterName} convidou você para o MappaHub`,
     headerColor: '#0891b2',
     headerIcon: '🤝',
     title: 'Você foi convidado!',
@@ -222,7 +222,7 @@ export function trialExpiringHtml(tenantName: string, daysLeft: number, appUrl: 
 
   const body = `
     ${paragraph(`Olá, ${highlight(tenantName)}!`)}
-    ${paragraph(`Seu período de avaliação gratuita do AtlaSync termina em ${highlight(`${daysLeft} ${dayLabel}`)}. Não perca o acesso às suas funcionalidades!`)}
+    ${paragraph(`Seu período de avaliação gratuita do MappaHub termina em ${highlight(`${daysLeft} ${dayLabel}`)}. Não perca o acesso às suas funcionalidades!`)}
 
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:20px 0;border-radius:10px;overflow:hidden;border:1px solid #e2e8f0">
       <tr>
@@ -246,7 +246,7 @@ export function trialExpiringHtml(tenantName: string, daysLeft: number, appUrl: 
   `
 
   return baseTemplate({
-    previewText: `Seu trial AtlaSync expira em ${daysLeft} ${dayLabel}`,
+    previewText: `Seu trial MappaHub expira em ${daysLeft} ${dayLabel}`,
     headerColor: isUrgent ? '#dc2626' : '#f59e0b',
     headerIcon: isUrgent ? '⚠️' : '⏳',
     title: `Trial expira em ${daysLeft} ${dayLabel}`,
@@ -319,7 +319,7 @@ export function ticketReplyHtml(opts: {
 
   const body = `
     ${paragraph(`Olá, ${highlight(recipientName)}!`)}
-    ${paragraph('Sua solicitação de suporte recebeu uma nova resposta da equipe AtlaSync.')}
+    ${paragraph('Sua solicitação de suporte recebeu uma nova resposta da equipe MappaHub.')}
 
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin:20px 0">
       <tbody>
@@ -331,7 +331,7 @@ export function ticketReplyHtml(opts: {
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 8px">
       <tr>
         <td>
-          <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em">Resposta da equipe AtlaSync</p>
+          <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:0.05em">Resposta da equipe MappaHub</p>
           <div style="border-left:3px solid #6366f1;padding:14px 18px;background:#f8f7ff;border-radius:0 8px 8px 0">
             <p style="margin:0;font-size:14px;color:#374151;line-height:1.7;white-space:pre-wrap">${replyBody.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</p>
           </div>
@@ -362,7 +362,7 @@ export function ticketResolvedHtml(opts: {
 
   const body = `
     ${paragraph(`Olá, ${highlight(recipientName)}!`)}
-    ${paragraph(`O ticket abaixo foi marcado como ${highlight('resolvido')} pela equipe AtlaSync. Esperamos que seu problema tenha sido solucionado!`)}
+    ${paragraph(`O ticket abaixo foi marcado como ${highlight('resolvido')} pela equipe MappaHub. Esperamos que seu problema tenha sido solucionado!`)}
 
     <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-radius:10px;overflow:hidden;border:1px solid #e2e8f0;margin:20px 0">
       <tbody>

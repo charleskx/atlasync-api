@@ -78,7 +78,7 @@ export const authService = {
 
     sendMail({
       to: email,
-      subject: 'Verifique seu e-mail — AtlaSync',
+      subject: 'Verifique seu e-mail — MappaHub',
       html: verifyEmailHtml(emailVerifyToken, env.APP_URL),
     }).catch(err => console.error('[mailer]', err))
 
@@ -145,7 +145,7 @@ export const authService = {
     if (user.totpEnabled) throw new AppError('TOTP_ALREADY_ENABLED', 409, '2FA já está ativado')
 
     const secret = generateSecret()
-    const otpauth = generateURI({ issuer: 'AtlaSync', label: user.email, secret })
+    const otpauth = generateURI({ issuer: 'MappaHub', label: user.email, secret })
     const qrCode = await QRCode.toDataURL(otpauth)
 
     await authRepository.updateUser(userId, { totpSecret: secret, updatedAt: new Date() })
@@ -308,7 +308,7 @@ export const authService = {
 
     sendMail({
       to: email,
-      subject: 'Redefinição de senha — AtlaSync',
+      subject: 'Redefinição de senha — MappaHub',
       html: resetPasswordHtml(resetToken, env.APP_URL),
     }).catch(err => console.error('[mailer]', err))
   },
@@ -365,7 +365,7 @@ export const authService = {
 
     sendMail({
       to: user.email,
-      subject: `${inviterName} convidou você para o AtlaSync`,
+      subject: `${inviterName} convidou você para o MappaHub`,
       html: inviteEmailHtml(inviterName, inviteToken, env.APP_URL),
     }).catch(err => console.error('[mailer]', err))
   },

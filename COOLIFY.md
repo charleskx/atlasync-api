@@ -1,6 +1,6 @@
 # Deploy no Coolify — Guia Passo a Passo
 
-Este guia cobre o deploy completo da Atlasync API no Coolify, incluindo banco PostgreSQL com PostGIS, Redis, a API principal e o worker de filas — ambos configurados para reiniciar automaticamente em caso de falha.
+Este guia cobre o deploy completo da MappaHub API no Coolify, incluindo banco PostgreSQL com PostGIS, Redis, a API principal e o worker de filas — ambos configurados para reiniciar automaticamente em caso de falha.
 
 ---
 
@@ -178,7 +178,7 @@ O worker processa jobs de importação e geocoding em background. Ele precisa ro
 
 1. Em `production`, clique em **New Resource** → **Application**
 2. Selecione o **mesmo repositório** e a branch `main`
-3. Dê o nome `atlasync-worker` para diferenciar da API
+3. Dê o nome `mappahub-worker` para diferenciar da API
 
 ### 6.2 Configurar o Build
 
@@ -249,14 +249,14 @@ Esse comando verifica se o worker consegue se conectar ao Redis (dependência cr
 
 Para confirmar que ambos os serviços reiniciam automaticamente:
 
-1. No painel Coolify, vá ao serviço **atlasync-api**
+1. No painel Coolify, vá ao serviço **mappahub-api**
 2. Em **Terminal**, execute:
    ```bash
    kill 1
    ```
    Isso encerra o processo principal do container
 3. Aguarde 10-20 segundos e observe o container subir automaticamente na aba **Logs**
-4. Repita o teste no serviço **atlasync-worker**
+4. Repita o teste no serviço **mappahub-worker**
 
 > O tempo de reinicialização depende do Docker e do tempo de boot do Node.js (~5-10 segundos).
 
@@ -299,7 +299,7 @@ A partir daí, todo push na branch `main` dispara um novo deploy de ambos os ser
 ## Resumo da arquitetura no Coolify
 
 ```
-Coolify Project: atlasync
+Coolify Project: mappahub
 └── Environment: production
     ├── Database: postgis/postgis:15-3.4  ← porta 5432 (interno)
     │             restart: unless-stopped
@@ -307,13 +307,13 @@ Coolify Project: atlasync
     ├── Database: Redis 7                 ← porta 6379 (interno)
     │             restart: unless-stopped
     │
-    ├── App: atlasync-api                 ← porta 3000, domínio público
+    ├── App: mappahub-api                 ← porta 3000, domínio público
     │         start:   node dist/server.js
     │         restart: unless-stopped
     │         health:  GET /health (30s interval, 3 retries)
     │         pre-deploy: npm run db:push
     │
-    └── App: atlasync-worker              ← sem porta, sem domínio
+    └── App: mappahub-worker              ← sem porta, sem domínio
               start:   node dist/worker.js
               restart: unless-stopped
               health:  redis ping via command (60s interval, 3 retries)

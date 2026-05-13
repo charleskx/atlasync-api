@@ -33,7 +33,7 @@ export async function geocodeAddress(address: string): Promise<FullGeoResult | n
 
   const res = await fetch(`${BASE_URL}?${params}`, {
     headers: {
-      'User-Agent': 'AtlaSync/1.0 (https://atlasync.com)',
+      'User-Agent': 'MappaHub/1.0 (https://atlasync.com)',
     },
   })
 

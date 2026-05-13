@@ -19,8 +19,12 @@ export const billingService = {
   },
 
   async createCheckoutSession(tenantId: string, input: CreateCheckoutInput) {
+    if (!env.STRIPE_SECRET_KEY) throw new AppError('STRIPE_NOT_CONFIGURED', 500, 'Stripe não configurado')
+
     const priceId = PRICE_MAP[input.plan]
     if (!priceId) throw new AppError('PLAN_NOT_CONFIGURED', 400, 'Plano não configurado')
+
+      console.log('priceId', priceId)
 
     const sub = await billingRepository.findSubscriptionByTenantId(tenantId)
     if (!sub) throw new AppError('SUBSCRIPTION_NOT_FOUND', 404, 'Assinatura não encontrada')
@@ -145,7 +149,7 @@ export const billingService = {
       expiring.map(row =>
         sendMail({
           to: row.ownerEmail,
-          subject: `Seu trial do AtlaSync expira em ${daysFromNow} ${daysFromNow === 1 ? 'dia' : 'dias'}`,
+          subject: `Seu trial do MappaHub expira em ${daysFromNow} ${daysFromNow === 1 ? 'dia' : 'dias'}`,
           html: trialExpiringHtml(row.tenantName, daysFromNow, env.APP_URL),
         }),
       ),
