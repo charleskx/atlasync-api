@@ -2,7 +2,7 @@ import argon2 from 'argon2'
 import dayjs from 'dayjs'
 import { eq } from 'drizzle-orm'
 import { and, isNull } from 'drizzle-orm'
-import { generateSecret, generateURI, verifySync } from 'otplib'
+import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
 import { db } from '../../config/database'
 import { env } from '../../config/env'
@@ -123,8 +123,8 @@ export const authService = {
     if (!user || !user.totpSecret)
       throw new AppError('INVALID_TOKEN', 401, 'Token temporário inválido')
 
-    const result = verifySync({ token: code, secret: user.totpSecret })
-    if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
+    const result = speakeasy.totp.verify({ token: code, secret: user.totpSecret, encoding: 'base32' })
+    if (!result) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
 
     tempTokens.delete(tempToken)
 
@@ -144,8 +144,8 @@ export const authService = {
     if (!user) throw new AppError('USER_NOT_FOUND', 404, 'Usuário não encontrado')
     if (user.totpEnabled) throw new AppError('TOTP_ALREADY_ENABLED', 409, '2FA já está ativado')
 
-    const secret = generateSecret()
-    const otpauth = generateURI({ issuer: 'MappaHub', label: user.email, secret })
+    const { base32: secret } = speakeasy.generateSecret({ length: 20 })
+    const otpauth = speakeasy.otpauthURL({ secret, label: user.email, issuer: 'MappaHub', encoding: 'base32' })
     const qrCode = await QRCode.toDataURL(otpauth)
 
     await authRepository.updateUser(userId, { totpSecret: secret, updatedAt: new Date() })
@@ -160,8 +160,8 @@ export const authService = {
     }
     if (user.totpEnabled) throw new AppError('TOTP_ALREADY_ENABLED', 409, '2FA já está ativado')
 
-    const result = verifySync({ token: code, secret: user.totpSecret })
-    if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
+    const result = speakeasy.totp.verify({ token: code, secret: user.totpSecret, encoding: 'base32' })
+    if (!result) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
 
     // Generate 8 recovery codes and store hashed versions
     const plainCodes = Array.from({ length: 8 }, () => {
@@ -188,8 +188,8 @@ export const authService = {
       throw new AppError('TOTP_NOT_ENABLED', 400, '2FA não está ativado')
     }
 
-    const result = verifySync({ token: code, secret: user.totpSecret })
-    if (!result.valid) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
+    const result = speakeasy.totp.verify({ token: code, secret: user.totpSecret, encoding: 'base32' })
+    if (!result) throw new AppError('INVALID_TOTP', 401, 'Código 2FA inválido')
 
     await db.transaction(async tx => {
       await tx.update(users).set({ totpSecret: null, totpEnabled: false, updatedAt: new Date() }).where(eq(users.id, userId))
