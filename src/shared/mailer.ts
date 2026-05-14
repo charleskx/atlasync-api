@@ -169,7 +169,7 @@ function highlight(text: string): string {
 // ─── Templates ────────────────────────────────────────────────────────────────
 
 export function verifyEmailHtml(token: string, appUrl: string): string {
-  const link = `${appUrl}/auth/verify?token=${token}`
+  const link = `${appUrl}/verify-email?token=${token}`
 
   const body = `
     ${paragraph(`Obrigado por se cadastrar no <strong>MappaHub</strong>! Para ativar sua conta, confirme seu endereço de e-mail clicando no botão abaixo.`)}

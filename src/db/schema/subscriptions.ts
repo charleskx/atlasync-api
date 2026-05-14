@@ -12,7 +12,7 @@ export const subscriptions = pgTable('subscriptions', {
   // trialing | active | past_due | canceled | incomplete
   status: varchar('status', { length: 30 }).notNull().default('trialing'),
   // monthly | annual
-  planType: varchar('plan_type', { length: 20 }).default('monthly'),
+  planType: varchar('plan_type', { length: 20 }),
   trialEndsAt: timestamp('trial_ends_at'),
   currentPeriodStart: timestamp('current_period_start'),
   currentPeriodEnd: timestamp('current_period_end'),

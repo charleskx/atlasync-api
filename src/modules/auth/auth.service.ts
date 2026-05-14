@@ -92,6 +92,8 @@ export const authService = {
     const valid = await argon2.verify(user.passwordHash, password)
     if (!valid) throw new AppError('INVALID_CREDENTIALS', 401, 'Credenciais inválidas')
 
+    if (!user.emailVerified) throw new AppError('EMAIL_NOT_VERIFIED', 403, 'Confirme seu e-mail antes de entrar')
+
     if (user.totpEnabled && user.totpSecret) {
       const tempToken = generateToken(32)
       tempTokens.set(tempToken, {
