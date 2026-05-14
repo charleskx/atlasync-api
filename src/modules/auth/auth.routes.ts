@@ -144,6 +144,14 @@ export async function authRoutes(app: FastifyInstance) {
     return { success: true }
   })
 
+  app.post('/resend-verification', async req => {
+    const { email } = req.body as { email?: string }
+    if (!email) throw new AppError('VALIDATION_ERROR', 400, 'E-mail obrigatório')
+
+    await authService.resendVerification(email)
+    return { success: true, message: 'Se o e-mail existir e não estiver verificado, um novo link foi enviado.' }
+  })
+
   app.post('/forgot-password', async req => {
     const body = forgotPasswordSchema.safeParse(req.body)
     if (!body.success) throw new AppError('VALIDATION_ERROR', 400, body.error.errors[0].message)

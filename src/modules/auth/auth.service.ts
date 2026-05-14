@@ -294,6 +294,26 @@ export const authService = {
     })
   },
 
+  async resendVerification(email: string) {
+    const user = await authRepository.findUserByEmail(email)
+    // Resposta genérica para não vazar se o e-mail existe
+    if (!user || user.emailVerified) return
+
+    const newToken = generateToken()
+
+    await authRepository.updateUser(user.id, {
+      emailVerifyToken: newToken,
+      emailVerifyExpiresAt: dayjs().add(24, 'hour').toDate(),
+      updatedAt: new Date(),
+    })
+
+    sendMail({
+      to: email,
+      subject: 'Verifique seu e-mail — MappaHub',
+      html: verifyEmailHtml(newToken, env.APP_URL),
+    }).catch(err => console.error('[mailer]', err))
+  },
+
   async forgotPassword(email: string) {
     const user = await authRepository.findUserByEmail(email)
     if (!user) return
