@@ -9,6 +9,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-05-14
+
+### Corrigido
+- Geocoding por CEP agora usa o parâmetro postalcode do Nominatim com countrycodes=br, resolvendo falhas de busca com CEPs brasileiros
+
 ## [0.1.4] - 2026-05-14
 
 ### Corrigido

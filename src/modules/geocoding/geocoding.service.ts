@@ -19,17 +19,26 @@ type NominatimResult = {
   address: NominatimAddress
 }
 
+const CEP_RE = /^\d{5}-?\d{3}$/
+
 export async function geocodeAddress(address: string): Promise<FullGeoResult | null> {
   const cached = await getFromCache(address)
   if (cached) return cached
 
-  const params = new URLSearchParams({
-    q: address,
+  const isCep = CEP_RE.test(address.trim())
+  const baseParams: Record<string, string> = {
     format: 'json',
     addressdetails: '1',
     limit: '1',
     'accept-language': 'pt-BR',
-  })
+    countrycodes: 'br',
+  }
+  if (isCep) {
+    baseParams.postalcode = address.replace('-', '')
+  } else {
+    baseParams.q = address
+  }
+  const params = new URLSearchParams(baseParams)
 
   const res = await fetch(`${BASE_URL}?${params}`, {
     headers: {
