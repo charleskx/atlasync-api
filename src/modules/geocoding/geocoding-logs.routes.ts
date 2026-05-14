@@ -37,7 +37,12 @@ export async function geocodingLogsRoutes(app: FastifyInstance) {
     if (!partner || partner.tenantId !== req.tenantId)
       throw new AppError('NOT_FOUND', 404, 'Parceiro não encontrado')
 
-    const geo = await geocodeAddress(address.trim())
+    let geo: Awaited<ReturnType<typeof geocodeAddress>>
+    try {
+      geo = await geocodeAddress(address.trim())
+    } catch {
+      throw new AppError('ADDRESS_NOT_FOUND', 422, 'Endereço não encontrado. Tente ser mais específico.')
+    }
     if (!geo) throw new AppError('ADDRESS_NOT_FOUND', 422, 'Endereço não encontrado. Tente ser mais específico.')
 
     if (!confirm) {

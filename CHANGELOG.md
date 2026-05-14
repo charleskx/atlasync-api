@@ -9,6 +9,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-05-14
+
+### Corrigido
+- Rota fix-address retornava 500 quando geocodeAddress lançava exceção em vez de retornar null; exceção agora capturada e convertida em 422
+
 ## [0.1.3] - 2026-05-14
 
 ### Adicionado
