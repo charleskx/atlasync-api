@@ -12,9 +12,14 @@ const schema = z.object({
   STRIPE_PRICE_MONTHLY: z.string().optional(),
   STRIPE_PRICE_ANNUAL: z.string().optional(),
   APP_URL: z.string().default('http://localhost:3000'),
-  CORS_ORIGIN: z.string().optional(), // ex: https://app.mappahub.com.br,https://mappahub.com.br
+  CORS_ORIGIN: z.string().optional(),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
+  SMTP_HOST: z.string().default('localhost'),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().default(''),
+  SMTP_PASS: z.string().default(''),
+  SMTP_FROM: z.string().default('MappaHub <noreply@mappahub.com.br>'),
 })
 
 export const env = schema.parse(process.env)

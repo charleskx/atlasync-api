@@ -1,9 +1,19 @@
+import nodemailer from 'nodemailer'
 import { env } from '../config/env'
 
 interface MailOptions {
   to: string
   subject: string
   html: string
+}
+
+function createTransport() {
+  return nodemailer.createTransport({
+    host: env.SMTP_HOST,
+    port: env.SMTP_PORT,
+    secure: env.SMTP_PORT === 465,
+    auth: { user: env.SMTP_USER, pass: env.SMTP_PASS },
+  })
 }
 
 export async function sendMail(options: MailOptions): Promise<void> {
@@ -14,7 +24,14 @@ export async function sendMail(options: MailOptions): Promise<void> {
     console.log(`  Body: ${options.html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 300)}\n`)
     return
   }
-  // TODO: implementar SMTP em produção
+
+  const transport = createTransport()
+  await transport.sendMail({
+    from: env.SMTP_FROM,
+    to: options.to,
+    subject: options.subject,
+    html: options.html,
+  })
 }
 
 // ─── Base layout ─────────────────────────────────────────────────────────────

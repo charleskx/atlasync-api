@@ -105,7 +105,14 @@ STRIPE_PRICE_MONTHLY=price_...
 STRIPE_PRICE_ANNUAL=price_...
 GOOGLE_MAPS_API_KEY=AIza...
 SENTRY_DSN=https://...@sentry.io/...
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USER=resend
+SMTP_PASS=re_...
+SMTP_FROM=MappaHub <noreply@mappahub.com.br>
 ```
+
+> **SMTP**: a API usa SMTP padrão, compatível com qualquer provedor. O exemplo acima usa o [Resend](https://resend.com) (recomendado). Para outros provedores, ajuste `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e `SMTP_PASS` conforme a documentação do serviço. Use porta `587` com STARTTLS (padrão) ou `465` para SSL direto.
 
 Para gerar o `JWT_SECRET`:
 ```bash
@@ -407,6 +414,9 @@ docker inspect <container_id> | grep RestartPolicy
 
 **Worker cai em loop (restart loop)**
 Se o worker reiniciar repetidamente, há um erro na inicialização. Acesse **Logs** do serviço e procure o erro antes do shutdown. Causas comuns: `REDIS_URL` inválido, `DATABASE_URL` incorreto, ou variável de ambiente faltando.
+
+**E-mails não são enviados em produção**
+Verifique se as variáveis `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e `SMTP_PASS` estão definidas. Em desenvolvimento, os e-mails são apenas logados no console — o envio real só acontece com `NODE_ENV=production`. Para testar o SMTP sem afetar usuários reais, use um serviço como [Mailtrap](https://mailtrap.io) apontando para o ambiente de staging.
 
 **Stripe webhook retorna 400**
 Confirme que o `STRIPE_WEBHOOK_SECRET` no Coolify corresponde exatamente ao secret exibido no dashboard do Stripe para aquele endpoint. O prefixo `whsec_` faz parte da string.
