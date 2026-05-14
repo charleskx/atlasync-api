@@ -280,19 +280,82 @@ Para que os eventos do Stripe cheguem à API:
 
 ---
 
-## 9. Atualizações futuras (Auto Deploy)
+## 9. Deploy controlado por tag de versão (GitHub Actions)
 
-O Coolify suporta **Auto Deploy** via webhook do GitHub/GitLab:
+O deploy **não acontece a cada push na `main`**. Ele é acionado somente ao criar e enviar uma tag de versão (ex: `v1.2.0`). Isso garante que você controla exatamente o que vai para produção e quando.
 
-1. No serviço da API, vá em **Settings** → **Webhooks**
-2. Copie a URL do webhook do Coolify
-3. No GitHub, vá em **Settings** → **Webhooks** → **Add webhook**
-4. Cole a URL e selecione o evento **Push**
-5. Repita para o serviço do **worker** (mesmo repositório, webhook diferente)
+### 9.1 Desativar o Auto Deploy do Coolify
 
-A partir daí, todo push na branch `main` dispara um novo deploy de ambos os serviços automaticamente.
+Por padrão o Coolify faz deploy a cada push na branch configurada. Desative isso:
 
-> **Ordem de deploy**: o Coolify faz o deploy de cada serviço de forma independente. Se precisar garantir que a API sobe antes do worker, use o campo **Depends On** em **Advanced** do serviço worker e aponte para o serviço da API.
+1. No serviço **mappahub-api** → **Settings** → desative **"Auto Deploy"**
+2. Repita no serviço **mappahub-worker**
+
+### 9.2 Copiar os webhooks de deploy do Coolify
+
+O GitHub Actions vai acionar o deploy chamando os webhooks do Coolify via HTTP.
+
+1. No serviço **mappahub-api** → **Settings** → **Deploy Webhook** → copie a URL
+2. No serviço **mappahub-worker** → **Settings** → **Deploy Webhook** → copie a URL
+
+### 9.3 Adicionar os secrets no GitHub
+
+No repositório do GitHub → **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Valor |
+|--------|-------|
+| `COOLIFY_WEBHOOK_API` | URL do webhook do serviço `mappahub-api` |
+| `COOLIFY_WEBHOOK_WORKER` | URL do webhook do serviço `mappahub-worker` |
+
+### 9.4 Como fazer um deploy
+
+```bash
+# 1. Certifique-se de que a main está atualizada
+git checkout main
+git pull origin main
+
+# 2. Atualize o CHANGELOG.md com o que mudou na versão
+
+# 3. Atualize a versão no package.json (opcional mas recomendado)
+npm version 1.2.0 --no-git-tag-version
+
+# 4. Commit
+git add CHANGELOG.md package.json
+git commit -m "chore: release v1.2.0"
+
+# 5. Crie e envie a tag
+git tag v1.2.0
+git push origin main
+git push origin v1.2.0
+```
+
+O GitHub Actions (`.github/workflows/deploy.yml`) irá automaticamente:
+1. Extrair as notas de versão do `CHANGELOG.md`
+2. Criar um **GitHub Release** com o changelog da versão
+3. Acionar o deploy do `mappahub-api` via webhook do Coolify
+4. Acionar o deploy do `mappahub-worker` via webhook do Coolify
+
+### 9.5 Escrever o CHANGELOG
+
+O `CHANGELOG.md` segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/). Mantenha sempre uma seção `[Unreleased]` no topo e preencha durante o desenvolvimento:
+
+```markdown
+## [Unreleased]
+
+### Adicionado
+- Nova funcionalidade X
+
+### Corrigido
+- Bug Y na rota Z
+
+## [1.2.0] - 2026-06-01
+### Adicionado
+- Suporte a webhooks customizados
+```
+
+Ao criar a tag `v1.2.0`, o workflow extrai automaticamente o bloco `## [1.2.0]` e usa como corpo do GitHub Release.
+
+> **Ordem de deploy**: o worker é acionado logo após a API. Se precisar garantir que a API está saudável antes do worker subir, use o campo **Depends On** em **Advanced** do serviço worker no Coolify.
 
 ---
 
