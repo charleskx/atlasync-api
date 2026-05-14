@@ -18,21 +18,4 @@ export async function geocodingLogsRoutes(app: FastifyInstance) {
     return reply.send(logs)
   })
 
-  // Super admin: all failed partners across all tenants
-  app.get('/admin/geocoding-logs', async (req, reply) => {
-    if (req.userRole !== 'super_admin') {
-      return reply.status(403).send({ error: 'FORBIDDEN', message: 'Sem permissão' })
-    }
-    const logs = await geocodingLogsRepository.findAllFailures()
-    return reply.send(logs)
-  })
-
-  // Super admin: summary by tenant
-  app.get('/admin/geocoding-logs/summary', async (req, reply) => {
-    if (req.userRole !== 'super_admin') {
-      return reply.status(403).send({ error: 'FORBIDDEN', message: 'Sem permissão' })
-    }
-    const summary = await geocodingLogsRepository.summaryByTenant()
-    return reply.send(summary)
-  })
 }

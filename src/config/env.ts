@@ -13,6 +13,7 @@ const schema = z.object({
   STRIPE_PRICE_ANNUAL: z.string().optional(),
   APP_URL: z.string().default('http://localhost:3000'),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
+  SENTRY_DSN: z.string().optional(),
 })
 
 export const env = schema.parse(process.env)

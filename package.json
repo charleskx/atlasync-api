@@ -24,6 +24,7 @@
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^10.0.0",
     "@fastify/rate-limit": "^10.3.0",
+    "@sentry/node": "^10.53.1",
     "argon2": "^0.40.3",
     "bullmq": "^5.13.0",
     "dayjs": "^1.11.12",

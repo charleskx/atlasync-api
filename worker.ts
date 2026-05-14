@@ -1,6 +1,9 @@
+import { initSentry, Sentry } from './src/config/sentry'
 import { env } from './src/config/env'
 import { createGeocodingWorker } from './src/modules/geocoding/geocoding.worker'
 import { createImportWorker } from './src/modules/import/import.worker'
+
+initSentry()
 
 async function main() {
   console.log(`[worker] Starting in ${env.NODE_ENV} mode`)
@@ -13,6 +16,7 @@ async function main() {
   })
   importWorker.on('failed', (job, err) => {
     console.error(`[import] Job ${job?.id} failed:`, err.message)
+    Sentry.captureException(err, { extra: { jobId: job?.id, queue: 'import' } })
   })
 
   geocodingWorker.on('completed', job => {
@@ -20,6 +24,7 @@ async function main() {
   })
   geocodingWorker.on('failed', (job, err) => {
     console.error(`[geocoding] Job ${job?.id} failed:`, err.message)
+    Sentry.captureException(err, { extra: { jobId: job?.id, queue: 'geocoding' } })
   })
 
   console.log('[worker] Import and geocoding workers running')

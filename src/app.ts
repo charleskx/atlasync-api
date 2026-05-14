@@ -21,6 +21,7 @@ import { pinTypeRoutes } from './modules/pin-type/pin-type.routes'
 import { tenantRoutes } from './modules/tenant/tenant.routes'
 import { userRoutes } from './modules/user/user.routes'
 import { AppError } from './shared/errors'
+import { Sentry } from './config/sentry'
 
 export async function buildApp() {
   const app = Fastify({
@@ -76,6 +77,7 @@ export async function buildApp() {
         .send({ error: 'RATE_LIMIT', message: 'Muitas requisições. Tente novamente em instantes.' })
     }
 
+    Sentry.captureException(error)
     req.log.error(error)
     return reply.status(500).send({ error: 'INTERNAL_ERROR', message: 'Erro interno do servidor' })
   })
