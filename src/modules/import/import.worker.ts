@@ -1,6 +1,9 @@
 import { Worker } from 'bullmq'
+import { eq } from 'drizzle-orm'
 import { redis } from '../../config/redis'
 import { env } from '../../config/env'
+import { db } from '../../config/database'
+import { subscriptions } from '../../db/schema'
 import { geocodingQueue } from '../../queues/geocoding.queue'
 import type { ImportJobPayload } from '../../queues/import.queue'
 import { importDoneHtml, sendMail } from '../../shared/mailer'
@@ -8,6 +11,15 @@ import { partnerRepository } from '../partner/partner.repository'
 import { pinTypeRepository } from '../pin-type/pin-type.repository'
 import { userRepository } from '../user/user.repository'
 import { importRepository } from './import.repository'
+
+async function getGeocodingPriority(tenantId: string): Promise<number> {
+  const [sub] = await db
+    .select({ planType: subscriptions.planType })
+    .from(subscriptions)
+    .where(eq(subscriptions.tenantId, tenantId))
+    .limit(1)
+  return sub?.planType === 'annual' ? 1 : 2
+}
 
 const PROGRESS_BATCH = 10
 
@@ -23,13 +35,16 @@ export function createImportWorker() {
     async job => {
       const { jobId, tenantId, rows, mode } = job.data
 
-      await importRepository.update(jobId, {
-        status: 'processing',
-        mode,
-        totalRows: rows.length,
-        processedRows: 0,
-        startedAt: new Date(),
-      })
+      const [, geocodingPriority] = await Promise.all([
+        importRepository.update(jobId, {
+          status: 'processing',
+          mode,
+          totalRows: rows.length,
+          processedRows: 0,
+          startedAt: new Date(),
+        }),
+        getGeocodingPriority(tenantId),
+      ])
 
       let created = 0
       let updated = 0
@@ -61,7 +76,7 @@ export function createImportWorker() {
                 partnerId: existing.id,
                 address: row.address,
                 tenantId,
-              })
+              }, { priority: geocodingPriority })
             }
             updated++
           } else {
@@ -79,7 +94,7 @@ export function createImportWorker() {
               partnerId: partner.id,
               address: partner.address,
               tenantId,
-            })
+            }, { priority: geocodingPriority })
             created++
           }
 

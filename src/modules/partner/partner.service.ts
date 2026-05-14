@@ -1,3 +1,6 @@
+import { eq } from 'drizzle-orm'
+import { db } from '../../config/database'
+import { subscriptions } from '../../db/schema'
 import { geocodingQueue } from '../../queues/geocoding.queue'
 import { AppError } from '../../shared/errors'
 import { defineAbilityFor } from '../../shared/permissions'
@@ -5,6 +8,15 @@ import { partnerRepository } from './partner.repository'
 import type { CreatePartnerInput, ListPartnersInput, UpdatePartnerInput } from './partner.schema'
 
 type Requester = { id: string; role: string; tenantId: string }
+
+async function getGeocodingPriority(tenantId: string): Promise<number> {
+  const [sub] = await db
+    .select({ planType: subscriptions.planType })
+    .from(subscriptions)
+    .where(eq(subscriptions.tenantId, tenantId))
+    .limit(1)
+  return sub?.planType === 'annual' ? 1 : 2
+}
 
 export const partnerService = {
   async list(requester: Requester, filters: ListPartnersInput) {
@@ -28,13 +40,16 @@ export const partnerService = {
     const ability = defineAbilityFor({ role: requester.role })
     if (!ability.can('create', 'Partner')) throw new AppError('FORBIDDEN', 403, 'Sem permissão')
 
-    const partner = await partnerRepository.create(requester.tenantId, data)
+    const [partner, priority] = await Promise.all([
+      partnerRepository.create(requester.tenantId, data),
+      getGeocodingPriority(requester.tenantId),
+    ])
 
     await geocodingQueue.add('geocode', {
       partnerId: partner.id,
       address: partner.address,
       tenantId: requester.tenantId,
-    })
+    }, { priority })
 
     return partner
   },
@@ -49,11 +64,12 @@ export const partnerService = {
     const updated = await partnerRepository.update(id, requester.tenantId, data)
 
     if (data.address && data.address !== existing.address) {
+      const priority = await getGeocodingPriority(requester.tenantId)
       await geocodingQueue.add('geocode', {
         partnerId: id,
         address: data.address,
         tenantId: requester.tenantId,
-      })
+      }, { priority })
     }
 
     return updated
