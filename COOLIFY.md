@@ -97,18 +97,22 @@ PORT=3000
 DATABASE_URL=postgresql://atlasync:SENHA@postgresql-XXXXX:5432/atlasync
 REDIS_URL=redis://default:SENHA@redis-XXXXX:6379
 JWT_SECRET=GERE_UMA_STRING_ALEATORIA_DE_64_CHARS
-APP_URL=https://api.seudominio.com
+APP_URL=https://api.mappahub.com.br
+CORS_ORIGIN=https://app.mappahub.com.br,https://mappahub.com.br
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PRICE_MONTHLY=price_...
 STRIPE_PRICE_ANNUAL=price_...
 GOOGLE_MAPS_API_KEY=AIza...
+SENTRY_DSN=https://...@sentry.io/...
 ```
 
 Para gerar o `JWT_SECRET`:
 ```bash
 openssl rand -base64 48
 ```
+
+> **`CORS_ORIGIN`**: lista de origens permitidas separadas por vírgula. Em desenvolvimento (sem essa variável) a API aceita qualquer origem. Em produção, restrinja sempre aos domínios reais. Se adicionar mais subdomínios no futuro, basta incluí-los na lista sem precisar de novo deploy — apenas reinicie o serviço após alterar a variável.
 
 ### 4.4 Configurar o domínio
 

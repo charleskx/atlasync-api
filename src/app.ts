@@ -38,8 +38,12 @@ export async function buildApp() {
     },
   })
 
+  const allowedOrigins = env.CORS_ORIGIN
+    ? env.CORS_ORIGIN.split(',').map(o => o.trim())
+    : true // development: allow all
+
   await app.register(cors, {
-    origin: true,
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

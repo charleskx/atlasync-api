@@ -12,6 +12,7 @@ const schema = z.object({
   STRIPE_PRICE_MONTHLY: z.string().optional(),
   STRIPE_PRICE_ANNUAL: z.string().optional(),
   APP_URL: z.string().default('http://localhost:3000'),
+  CORS_ORIGIN: z.string().optional(), // ex: https://app.mappahub.com.br,https://mappahub.com.br
   GOOGLE_MAPS_API_KEY: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
 })
