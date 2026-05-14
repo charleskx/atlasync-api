@@ -9,6 +9,16 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-05-14
+
+### Adicionado
+- Endpoint POST /geocoding-logs/fix-address/:partnerId para validar e corrigir endereços com falha de geocoding
+
+### Corrigido
+- Link de redefinição de senha corrigido no template de e-mail (era /auth/reset-password, agora /reset-password)
+- Evento checkout.session.completed agora busca corretamente o planType da sessão Stripe
+- Fluxo de trial e verificação de e-mail corrigidos (planType não tinha mais valor padrão)
+
 ## [0.1.2] - 2026-05-14
 
 ### Adicionado
