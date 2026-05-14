@@ -15,7 +15,8 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check --write .",
-    "db:seed": "tsx src/db/seed.ts"
+    "db:seed": "tsx src/db/seed.ts",
+    "release": "node scripts/release.mjs"
   },
   "dependencies": {
     "@casl/ability": "^6.7.1",
