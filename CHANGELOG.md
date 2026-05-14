@@ -9,6 +9,45 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-14
+
+### Adicionado
+- Add isolated super admin seed script for production
+- Add healthcheck script for Redis connection verification
+- Add POST /auth/resend-verification endpoint
+- Configure allowed origins via CORS_ORIGIN env variable
+- Priority queue for annual plan tenants
+- Add Sentry error tracking to server and worker; remove admin geocoding routes
+- Geocoding logs, partner filters, improved email templates and Coolify docs
+- Full support ticket system
+- Allow super admin to disable 2FA for any user
+- Send email notification when import completes
+- Add readonly flag to partner columns
+- Add notes field and expose in getById/update
+- 2FA recovery codes
+- Replace Google Maps geocoding with Nominatim (OpenStreetMap)
+- Add /dashboard/stats endpoint with real partner and import metrics
+- Add pinTypeId filter and public pin-types endpoint to public map API
+- Add public config endpoint to expose Maps API key for public maps
+- Módulo de tipos de pin gerenciados por empresa
+- Pós-MVP — SSE progresso import, import incremental e 2FA TOTP
+- Sprint 6 — exportação de planilha e painel super admin
+- Sprint 4 — módulo de mapas, embed e configurações do tenant
+- Implementação completa das sprints 1, 2 e 3
+
+### Corrigido
+- Update Redis client implementation to use ioredis for improved connection handling
+- Replace otplib with speakeasy to resolve ESM/CJS incompatibility
+- Add /auth/me endpoint without subscriptionGuard
+- Disable public maps when tenant is inactive or subscription expired
+- Block public map creation when publicMapEnabled is false
+- 2FA broken QR code and public map not respecting publicMapEnabled
+- Add GET /partners/pins endpoint independent of map entities
+- Include city and state in findPublicPins SELECT so client filters work
+- Add explicit CORS methods and headers to allow PATCH requests
+- Corrige todas as vulnerabilidades de segurança (npm audit zero)
+
+
 ## [1.0.0] - 2026-05-13
 
 ### Adicionado
