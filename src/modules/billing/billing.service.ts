@@ -85,9 +85,17 @@ export const billingService = {
         const session = event.data.object as Stripe.Checkout.Session
         const tenantId = session.metadata?.tenantId
         if (!tenantId || !session.subscription) break
+
+        const stripeSub = await stripe.subscriptions.retrieve(String(session.subscription))
+        const priceId = stripeSub.items.data[0]?.price.id
+        const planType = priceId === env.STRIPE_PRICE_ANNUAL ? 'annual' : 'monthly'
+
         await billingRepository.updateSubscription(tenantId, {
           stripeSubscriptionId: String(session.subscription),
           status: 'active',
+          planType,
+          currentPeriodStart: new Date(stripeSub.current_period_start * 1000),
+          currentPeriodEnd: new Date(stripeSub.current_period_end * 1000),
         })
         break
       }
