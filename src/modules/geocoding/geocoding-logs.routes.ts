@@ -1,21 +1,60 @@
 import type { FastifyInstance } from 'fastify'
+import { eq } from 'drizzle-orm'
+import { db } from '../../config/database'
 import { authenticate } from '../../middlewares/authenticate'
+import { partners } from '../../db/schema'
+import { AppError } from '../../shared/errors'
 import { geocodingLogsRepository } from './geocoding-logs.repository'
+import { geocodeAddress } from './geocoding.service'
 
 export async function geocodingLogsRoutes(app: FastifyInstance) {
   app.addHook('preHandler', authenticate)
 
-  // Tenant: all failed partners (with log detail when available)
   app.get('/geocoding-logs', async (req, reply) => {
     const logs = await geocodingLogsRepository.findFailedByTenant(req.tenantId)
     return reply.send(logs)
   })
 
-  // Tenant: logs for a specific partner
   app.get('/geocoding-logs/partner/:partnerId', async (req, reply) => {
     const { partnerId } = req.params as { partnerId: string }
     const logs = await geocodingLogsRepository.findByPartner(partnerId)
     return reply.send(logs)
   })
 
+  // Validate an address and, if found, apply it to the partner
+  app.post('/geocoding-logs/fix-address/:partnerId', async (req, reply) => {
+    const { partnerId } = req.params as { partnerId: string }
+    const { address, confirm } = req.body as { address: string; confirm?: boolean }
+
+    if (!address?.trim()) throw new AppError('VALIDATION_ERROR', 400, 'Endereço obrigatório')
+
+    const [partner] = await db
+      .select({ id: partners.id, tenantId: partners.tenantId })
+      .from(partners)
+      .where(eq(partners.id, partnerId))
+      .limit(1)
+
+    if (!partner || partner.tenantId !== req.tenantId)
+      throw new AppError('NOT_FOUND', 404, 'Parceiro não encontrado')
+
+    const geo = await geocodeAddress(address.trim())
+    if (!geo) throw new AppError('ADDRESS_NOT_FOUND', 422, 'Endereço não encontrado. Tente ser mais específico.')
+
+    if (!confirm) {
+      return reply.send({ valid: true, lat: geo.lat, lng: geo.lng, city: geo.city, state: geo.state })
+    }
+
+    await db.update(partners).set({
+      address: address.trim(),
+      lat: geo.lat,
+      lng: geo.lng,
+      city: geo.city,
+      state: geo.state,
+      geocodeStatus: 'done',
+      geocodedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(eq(partners.id, partnerId))
+
+    return reply.send({ applied: true, lat: geo.lat, lng: geo.lng, city: geo.city, state: geo.state })
+  })
 }
