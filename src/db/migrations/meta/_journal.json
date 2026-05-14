@@ -22,6 +22,13 @@
       "when": 1778584521312,
       "tag": "0002_add_totp_recovery_codes",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1778783377557,
+      "tag": "0003_remove_plantype_default",
+      "breakpoints": true
     }
   ]
 }
