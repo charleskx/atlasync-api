@@ -16,6 +16,7 @@
     "format": "biome format --write .",
     "check": "biome check --write .",
     "db:seed": "tsx src/db/seed.ts",
+    "db:seed-super-admin": "tsx src/db/seed-super-admin.ts",
     "release": "node scripts/release.mjs"
   },
   "dependencies": {
