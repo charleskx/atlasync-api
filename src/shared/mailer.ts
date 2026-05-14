@@ -190,7 +190,7 @@ export function verifyEmailHtml(token: string, appUrl: string): string {
 }
 
 export function resetPasswordHtml(token: string, appUrl: string): string {
-  const link = `${appUrl}/auth/reset-password?token=${token}`
+  const link = `${appUrl}/reset-password?token=${token}`
 
   const body = `
     ${paragraph('Recebemos uma solicitação para redefinir a senha da sua conta MappaHub. Clique no botão abaixo para criar uma nova senha.')}
