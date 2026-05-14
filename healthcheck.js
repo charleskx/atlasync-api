@@ -1,14 +1,16 @@
-const { createClient } = require('redis')
+const Redis = require('ioredis')
 
-const c = createClient({
-  url: process.env.REDIS_URL
-})
+async function run() {
+  const redis = new Redis(process.env.REDIS_URL)
 
-c.connect()
-  .then(async () => {
-    await c.quit()
+  try {
+    await redis.ping()
+    await redis.quit()
     process.exit(0)
-  })
-  .catch(() => {
+  } catch (err) {
+    console.error(err)
     process.exit(1)
-  })
+  }
+}
+
+run()
