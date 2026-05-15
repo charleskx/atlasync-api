@@ -187,27 +187,20 @@ No terminal do container da **API** (Coolify → mappahub-api → Terminal), rod
 
 ```bash
 node -e "
-const { db } = require('./dist/config/database');
-const { sql } = require('drizzle-orm');
-db.execute(sql\`
-  DROP TABLE IF EXISTS
-    partner_values,
-    geocoding_logs,
-    ticket_messages,
-    refresh_tokens,
-    totp_recovery_codes,
-    import_jobs,
-    partners,
-    partner_columns,
-    tickets,
-    maps,
-    pin_types,
-    users,
-    subscriptions,
-    tenant_settings,
-    tenants
+require('dotenv/config');
+const { Pool } = require('pg');
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+pool.query(\`
+  TRUNCATE TABLE
+    ticket_messages, tickets,
+    geocoding_logs, import_jobs,
+    partner_values, partner_columns,
+    maps, partners, pin_types,
+    refresh_tokens, totp_recovery_codes, users,
+    subscriptions, tenant_settings, tenants
   CASCADE
-\`).then(() => { console.log('Tabelas removidas.'); process.exit(0); });
+\`).then(() => { console.log('Banco limpo'); process.exit(0) })
+  .catch(e => { console.error(e); process.exit(1) })
 "
 ```
 
