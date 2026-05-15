@@ -489,15 +489,22 @@ Você precisará de **duas chaves separadas**: uma para o servidor (chamadas ser
 
 #### 1b. Chave do servidor (`GOOGLE_MAPS_API_KEY`)
 
+Usada exclusivamente pelo backend (Node.js). As chamadas saem sempre do IP fixo do Coolify.
+
 5. Vá em **APIs & Services** → **Credentials** → **+ Create Credentials** → **API Key**
 6. Nomeie como `MappaHub Server`
 7. Clique em **Edit API Key**:
-   - Em **Application restrictions**: selecione **IP addresses** e adicione o IP do seu servidor Coolify
-   - Em **API restrictions**: selecione **Restrict key** → marque **Geocoding API** e **Places API**
+   - Em **Application restrictions**: selecione **IP addresses** e adicione o IP público do seu servidor Coolify
+     > Para descobrir o IP: no terminal do container da API (Coolify → Terminal), rode `curl ifconfig.me`
+   - Em **API restrictions**: selecione **Restrict key** → marque apenas:
+     - **Geocoding API** ← converte endereços em coordenadas
+     - **Places API** ← autocomplete de endereço (chamado via `/places/autocomplete`)
    - Clique em **Save**
 8. Cole o valor em `GOOGLE_MAPS_API_KEY` no Coolify (serviço da API)
 
 #### 1c. Chave do frontend (`VITE_GOOGLE_MAPS_API_KEY`)
+
+Usada pelo browser do usuário. Não pode ter restrição de IP (cada usuário tem um IP diferente) — usa HTTP referrer para restringir ao seu domínio.
 
 9. Crie outra chave: **+ Create Credentials** → **API Key**
 10. Nomeie como `MappaHub Frontend`
@@ -506,7 +513,10 @@ Você precisará de **duas chaves separadas**: uma para o servidor (chamadas ser
       ```
       https://app.mappahub.com.br/*
       ```
-    - Em **API restrictions**: selecione **Restrict key** → marque **Maps JavaScript API** e **Places API**
+    - Em **API restrictions**: selecione **Restrict key** → marque apenas:
+      - **Maps JavaScript API** ← renderiza o mapa no browser
+      - **Places API** ← autocomplete de endereço no formulário de parceiro
+      > **Geocoding API não é necessária aqui** — o geocoding é feito pelo servidor, nunca pelo browser
     - Clique em **Save**
 12. Cole o valor em `VITE_GOOGLE_MAPS_API_KEY` no Coolify (serviço do frontend)
 
