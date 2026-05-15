@@ -19,16 +19,10 @@ type PlaceDetails = {
   state?: string
 }
 
-type GooglePrediction = {
-  place_id: string
-  description: string
-  structured_formatting: { main_text: string; secondary_text: string }
-}
+type NewApiAddressComponent = { longText: string; types: string[] }
 
-type GoogleAddressComponent = { long_name: string; types: string[] }
-
-function getComponent(components: GoogleAddressComponent[], type: string) {
-  return components.find(c => c.types.includes(type))?.long_name
+function getComponent(components: NewApiAddressComponent[], type: string) {
+  return components.find(c => c.types.includes(type))?.longText
 }
 
 export async function placesRoutes(app: FastifyInstance) {
@@ -42,32 +36,46 @@ export async function placesRoutes(app: FastifyInstance) {
       throw new AppError('VALIDATION_ERROR', 400, 'input deve ter ao menos 3 caracteres')
     }
 
-    const params = new URLSearchParams({
+    const body: Record<string, unknown> = {
       input: input.trim(),
-      key: env.GOOGLE_MAPS_API_KEY,
-      language: 'pt-BR',
-      components: 'country:br',
-      types: 'address',
+      languageCode: 'pt-BR',
+      includedRegionCodes: ['br'],
+      includedPrimaryTypes: ['route', 'street_address', 'premise'],
+    }
+    if (sessiontoken) body.sessionToken = sessiontoken
+
+    const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': env.GOOGLE_MAPS_API_KEY,
+      },
+      body: JSON.stringify(body),
     })
-    if (sessiontoken) params.set('sessiontoken', sessiontoken)
 
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params}`,
-    )
-    if (!res.ok) throw new AppError('PLACES_ERROR', 502, 'Erro ao consultar Google Places')
-
-    const data = (await res.json()) as { status: string; predictions: GooglePrediction[] }
-
-    if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
-      console.error(`[Places] Google status=${data.status} para input: "${input}"`)
-      throw new AppError('PLACES_ERROR', 502, `Google Places retornou: ${data.status}`)
+    if (!res.ok) {
+      const err = await res.text().catch(() => '')
+      console.error(`[Places] Autocomplete HTTP ${res.status}: ${err}`)
+      throw new AppError('PLACES_ERROR', 502, 'Erro ao consultar Google Places')
     }
 
-    const results: AutocompleteResult[] = (data.predictions ?? []).map(p => ({
-      placeId: p.place_id,
-      description: p.description,
-      mainText: p.structured_formatting.main_text,
-      secondaryText: p.structured_formatting.secondary_text,
+    type NewApiSuggestion = {
+      placePrediction: {
+        placeId: string
+        text: { text: string }
+        structuredFormat: {
+          mainText: { text: string }
+          secondaryText: { text: string }
+        }
+      }
+    }
+    const data = (await res.json()) as { suggestions?: NewApiSuggestion[] }
+
+    const results: AutocompleteResult[] = (data.suggestions ?? []).map(s => ({
+      placeId: s.placePrediction.placeId,
+      description: s.placePrediction.text.text,
+      mainText: s.placePrediction.structuredFormat.mainText.text,
+      secondaryText: s.placePrediction.structuredFormat.secondaryText?.text ?? '',
     }))
 
     return { results }
@@ -81,43 +89,39 @@ export async function placesRoutes(app: FastifyInstance) {
     const { placeId } = req.params as { placeId: string }
     const { sessiontoken } = req.query as { sessiontoken?: string }
 
-    const params = new URLSearchParams({
-      place_id: placeId,
-      key: env.GOOGLE_MAPS_API_KEY,
-      language: 'pt-BR',
-      fields: 'geometry,formatted_address,address_components',
-    })
-    if (sessiontoken) params.set('sessiontoken', sessiontoken)
+    const url = new URL(`https://places.googleapis.com/v1/places/${placeId}`)
+    url.searchParams.set('languageCode', 'pt-BR')
+    if (sessiontoken) url.searchParams.set('sessionToken', sessiontoken)
 
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?${params}`,
-    )
-    if (!res.ok) throw new AppError('PLACES_ERROR', 502, 'Erro ao consultar Google Places')
+    const res = await fetch(url.toString(), {
+      headers: {
+        'X-Goog-Api-Key': env.GOOGLE_MAPS_API_KEY,
+        'X-Goog-FieldMask': 'id,formattedAddress,location,addressComponents',
+      },
+    })
+
+    if (!res.ok) {
+      const err = await res.text().catch(() => '')
+      console.error(`[Places] Details HTTP ${res.status} para placeId "${placeId}": ${err}`)
+      throw new AppError('PLACES_ERROR', res.status === 404 ? 404 : 502, 'Erro ao consultar Google Places')
+    }
 
     const data = (await res.json()) as {
-      status: string
-      result: {
-        formatted_address: string
-        geometry: { location: { lat: number; lng: number } }
-        address_components: GoogleAddressComponent[]
-      }
+      id: string
+      formattedAddress: string
+      location: { latitude: number; longitude: number }
+      addressComponents: NewApiAddressComponent[]
     }
 
-    if (data.status !== 'OK') {
-      console.error(`[Places] Google Places Details status=${data.status} para placeId: "${placeId}"`)
-      throw new AppError('PLACES_ERROR', 404, `Place não encontrado: ${data.status}`)
-    }
-
-    const { formatted_address, geometry, address_components } = data.result
     const details: PlaceDetails = {
-      placeId,
-      address: formatted_address,
-      lat: geometry.location.lat,
-      lng: geometry.location.lng,
+      placeId: data.id,
+      address: data.formattedAddress,
+      lat: data.location.latitude,
+      lng: data.location.longitude,
       city:
-        getComponent(address_components, 'administrative_area_level_2') ??
-        getComponent(address_components, 'locality'),
-      state: getComponent(address_components, 'administrative_area_level_1'),
+        getComponent(data.addressComponents, 'administrative_area_level_2') ??
+        getComponent(data.addressComponents, 'locality'),
+      state: getComponent(data.addressComponents, 'administrative_area_level_1'),
     }
 
     return details
