@@ -179,6 +179,23 @@ Isso garante que o schema é sincronizado automaticamente a cada deploy, sem pre
 npx drizzle-kit push
 ```
 
+### Limpar toda a base de dados (reset completo)
+
+> ⚠️ **Irreversível.** Apaga todas as tabelas e dados. Use apenas em ambiente de testes ou quando precisar recomeçar do zero.
+
+No terminal do container do **PostgreSQL** (Coolify → banco → Terminal), execute:
+
+```sql
+DROP SCHEMA public CASCADE;
+CREATE SCHEMA public;
+```
+
+Depois, recrie as tabelas rodando no terminal da **API**:
+
+```bash
+npm run db:push
+```
+
 ---
 
 ## 6. Criar o Super Admin (primeira vez)
