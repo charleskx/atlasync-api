@@ -9,6 +9,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-05-14
+
+### Corrigido
+- Import no modo "substituição total" agora atualiza parceiros criados manualmente (sem externalKey) usando correspondência por nome, e os remove quando ausentes da nova planilha
+
 ## [0.1.7] - 2026-05-14
 
 ### Removido
