@@ -193,6 +193,21 @@ export async function authRoutes(app: FastifyInstance) {
     return { accessToken, refreshToken: refreshTokenValue }
   })
 
+  app.post('/google', async (req, reply) => {
+    const { credential } = req.body as { credential?: string }
+    if (!credential) throw new AppError('VALIDATION_ERROR', 400, 'credential obrigatório')
+
+    const result = await authService.loginWithGoogle(credential)
+    const accessToken = await reply.jwtSign({
+      sub: result.user.id,
+      tenantId: result.user.tenantId,
+      role: result.user.role,
+      name: result.user.name,
+    })
+
+    return { accessToken, refreshToken: result.refreshToken }
+  })
+
   // Endpoint sem subscriptionGuard — usado pelo frontend para carregar o usuário logado
   // independente do status da assinatura, garantindo acesso à tela de billing mesmo com conta cancelada
   app.get('/me', { preHandler: [authenticate] }, async (req) => {

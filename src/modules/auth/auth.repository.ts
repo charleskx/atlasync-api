@@ -21,6 +21,15 @@ export const authRepository = {
     return user ?? null
   },
 
+  async findUserByGoogleId(googleId: string) {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(and(eq(users.googleId, googleId), isNull(users.deletedAt)))
+      .limit(1)
+    return user ?? null
+  },
+
   async findUserByVerifyToken(token: string) {
     const [user] = await db
       .select()

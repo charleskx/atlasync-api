@@ -11,7 +11,8 @@ export const users = pgTable(
       .notNull(),
     name: varchar('name', { length: 200 }).notNull(),
     email: varchar('email', { length: 200 }).notNull().unique(),
-    passwordHash: varchar('password_hash', { length: 500 }).notNull(),
+    passwordHash: varchar('password_hash', { length: 500 }),
+    googleId: varchar('google_id', { length: 200 }).unique(),
     // owner | admin | employee | super_admin
     role: varchar('role', { length: 30 }).notNull().default('employee'),
     emailVerified: boolean('email_verified').default(false).notNull(),

@@ -14,6 +14,8 @@ const schema = z.object({
   APP_URL: z.string().default('http://localhost:3000'),
   CORS_ORIGIN: z.string().optional(),
   GOOGLE_MAPS_API_KEY: z.string().optional(),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
   SENTRY_DSN: z.string().optional(),
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().default(587),

@@ -8,6 +8,7 @@ import { env } from './config/env'
 import { redis } from './config/redis'
 import { adminRoutes } from './modules/admin/admin.routes'
 import { geocodingLogsRoutes } from './modules/geocoding/geocoding-logs.routes'
+import { placesRoutes } from './modules/places/places.routes'
 import { notificationsRoutes } from './modules/notifications/notifications.routes'
 import { ticketsRoutes } from './modules/tickets/tickets.routes'
 import { authRoutes } from './modules/auth/auth.routes'
@@ -102,6 +103,7 @@ export async function buildApp() {
   await app.register(notificationsRoutes, { prefix: '/notifications' })
   await app.register(ticketsRoutes, { prefix: '/tickets' })
   await app.register(geocodingLogsRoutes)
+  await app.register(placesRoutes, { prefix: '/places' })
 
   return app
 }

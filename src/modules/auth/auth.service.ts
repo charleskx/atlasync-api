@@ -2,6 +2,7 @@ import argon2 from 'argon2'
 import dayjs from 'dayjs'
 import { eq } from 'drizzle-orm'
 import { and, isNull } from 'drizzle-orm'
+import { OAuth2Client } from 'google-auth-library'
 import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
 import { db } from '../../config/database'
@@ -85,9 +86,97 @@ export const authService = {
     return { user, tenant, refreshToken: refreshTokenValue }
   },
 
+  async loginWithGoogle(credential: string) {
+    if (!env.GOOGLE_CLIENT_ID) {
+      throw new AppError('GOOGLE_AUTH_DISABLED', 503, 'Login com Google não está configurado')
+    }
+
+    const client = new OAuth2Client(env.GOOGLE_CLIENT_ID)
+    let payload: { sub: string; email?: string; name?: string } | undefined
+
+    try {
+      const ticket = await client.verifyIdToken({ idToken: credential, audience: env.GOOGLE_CLIENT_ID })
+      payload = ticket.getPayload() as typeof payload
+    } catch {
+      throw new AppError('INVALID_GOOGLE_TOKEN', 401, 'Token do Google inválido ou expirado')
+    }
+
+    if (!payload?.email || !payload?.sub) {
+      throw new AppError('INVALID_GOOGLE_TOKEN', 401, 'Token do Google inválido')
+    }
+
+    const { sub: googleId, email, name = email.split('@')[0] } = payload
+
+    // user already linked to Google
+    let user = await authRepository.findUserByGoogleId(googleId)
+
+    if (!user) {
+      // user registered with email/password — link Google account
+      const existing = await authRepository.findUserByEmail(email)
+      if (existing) {
+        await authRepository.updateUser(existing.id, { googleId, emailVerified: true, updatedAt: new Date() })
+        user = await authRepository.findUserById(existing.id)
+      }
+    }
+
+    if (!user) {
+      // brand new user — create tenant + owner account
+      let slug = slugify(name)
+      const slugTaken = await authRepository.findTenantBySlug(slug)
+      if (slugTaken) slug = `${slug}-${generateToken(4)}`
+
+      const result = await db.transaction(async tx => {
+        const [tenant] = await tx
+          .insert(tenants)
+          .values({ name, slug, email, updatedAt: new Date() })
+          .returning()
+
+        const [newUser] = await tx
+          .insert(users)
+          .values({
+            tenantId: tenant.id,
+            name,
+            email,
+            googleId,
+            role: 'owner',
+            emailVerified: true,
+            updatedAt: new Date(),
+          })
+          .returning()
+
+        await tx.insert(subscriptions).values({
+          tenantId: tenant.id,
+          status: 'trialing',
+          trialEndsAt: dayjs().add(14, 'day').toDate(),
+          updatedAt: new Date(),
+        })
+
+        await tx.insert(tenantSettings).values({ tenantId: tenant.id, updatedAt: new Date() })
+
+        return { user: newUser, tenant }
+      })
+
+      user = result.user
+    }
+
+    const refreshTokenValue = generateToken(64)
+    await authRepository.createRefreshToken({
+      userId: user!.id,
+      tenantId: user!.tenantId,
+      token: refreshTokenValue,
+      expiresAt: dayjs().add(30, 'day').toDate(),
+    })
+
+    return { user: user!, refreshToken: refreshTokenValue }
+  },
+
   async login({ email, password }: LoginInput) {
     const user = await authRepository.findUserByEmail(email)
     if (!user) throw new AppError('INVALID_CREDENTIALS', 401, 'Credenciais inválidas')
+
+    if (!user.passwordHash) {
+      throw new AppError('INVALID_CREDENTIALS', 401, 'Esta conta usa login com Google. Use o botão "Entrar com Google".')
+    }
 
     const valid = await argon2.verify(user.passwordHash, password)
     if (!valid) throw new AppError('INVALID_CREDENTIALS', 401, 'Credenciais inválidas')

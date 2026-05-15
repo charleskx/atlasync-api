@@ -101,6 +101,8 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_PRICE_MONTHLY=price_...
 STRIPE_PRICE_ANNUAL=price_...
 GOOGLE_MAPS_API_KEY=AIza...
+GOOGLE_CLIENT_ID=XXXXXXXXXX.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-...
 SENTRY_DSN=https://...@sentry.io/...
 SMTP_HOST=smtp.resend.com
 SMTP_PORT=587
@@ -452,3 +454,66 @@ Confirme que o `STRIPE_WEBHOOK_SECRET` no Coolify corresponde exatamente ao secr
 
 **API sobe mas retorna 502 Bad Gateway**
 Aguarde o **Start Period** (30s) do health check antes de concluir que há problema. Se persistir, verifique se a porta `3000` está corretamente configurada no serviço e se o processo está escutando em `0.0.0.0` e não em `127.0.0.1`.
+
+**Google Places retorna PLACES_DISABLED**
+As variáveis `GOOGLE_MAPS_API_KEY`, `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` não estão configuradas no Coolify. Consulte a seção **"Configurar as APIs do Google"** abaixo.
+
+---
+
+## Configurar as APIs do Google
+
+A MappaHub usa três serviços do Google que requerem chaves diferentes:
+
+| Serviço | Para quê | Variável |
+|---------|----------|----------|
+| Geocoding API | Converter endereço em lat/lng | `GOOGLE_MAPS_API_KEY` |
+| Places API | Autocomplete de endereço | `GOOGLE_MAPS_API_KEY` (mesma chave) |
+| OAuth 2.0 | Login com Google | `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` |
+
+---
+
+### Parte 1 — Criar a API Key (Geocoding + Places)
+
+1. Acesse [console.cloud.google.com](https://console.cloud.google.com) e faça login com sua conta Google
+2. Clique em **Select a project** → **New Project** → dê o nome `MappaHub` → **Create**
+3. No menu lateral, vá em **APIs & Services** → **Library**
+4. Procure e ative as duas APIs abaixo (clique em cada uma → **Enable**):
+   - **Geocoding API**
+   - **Places API**
+5. Vá em **APIs & Services** → **Credentials** → **+ Create Credentials** → **API Key**
+6. Copie a chave gerada (formato `AIzaSy...`)
+7. Clique em **Edit API Key** para restringir o uso:
+   - Em **Application restrictions**: selecione **IP addresses** e adicione o IP do seu servidor Coolify
+   - Em **API restrictions**: selecione **Restrict key** → marque **Geocoding API** e **Places API**
+   - Clique em **Save**
+8. Cole o valor em `GOOGLE_MAPS_API_KEY` no Coolify
+
+> **Cobrança**: o Google oferece **$200 de crédito gratuito por mês**. Com esse crédito você tem ~40.000 geocodificações e ~70.000 buscas de autocomplete gratuitamente. Cadastre um cartão de crédito no Google Cloud — ele só é cobrado se ultrapassar o crédito.
+
+---
+
+### Parte 2 — Criar as credenciais OAuth (Login com Google)
+
+1. No mesmo projeto `MappaHub`, vá em **APIs & Services** → **OAuth consent screen**
+2. Selecione **External** → **Create**
+3. Preencha:
+   - **App name**: `MappaHub`
+   - **User support email**: seu e-mail
+   - **Authorized domains**: `mappahub.com.br` (ou seu domínio)
+   - **Developer contact email**: seu e-mail
+4. Clique em **Save and Continue** até chegar em **Summary** → **Back to Dashboard**
+5. Vá em **Credentials** → **+ Create Credentials** → **OAuth 2.0 Client ID**
+6. Em **Application type**: selecione **Web application**
+7. Em **Authorized JavaScript origins**, adicione a URL do seu frontend:
+   ```
+   https://app.mappahub.com.br
+   ```
+8. Em **Authorized redirect URIs**, adicione a URL de callback do frontend:
+   ```
+   https://app.mappahub.com.br/auth/callback/google
+   ```
+9. Clique em **Create**
+10. Copie o **Client ID** (formato `XXXXXXXXXX.apps.googleusercontent.com`) e o **Client Secret** (formato `GOCSPX-...`)
+11. Cole em `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no Coolify
+
+> **Nota**: As **Authorized redirect URIs** devem apontar para o **frontend**, não para a API. O frontend recebe o token do Google e o envia para `POST /auth/google` na API para validação.
