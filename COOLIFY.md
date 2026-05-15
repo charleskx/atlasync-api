@@ -516,4 +516,22 @@ A MappaHub usa três serviços do Google que requerem chaves diferentes:
 10. Copie o **Client ID** (formato `XXXXXXXXXX.apps.googleusercontent.com`) e o **Client Secret** (formato `GOCSPX-...`)
 11. Cole em `GOOGLE_CLIENT_ID` e `GOOGLE_CLIENT_SECRET` no Coolify
 
-> **Nota**: As **Authorized redirect URIs** devem apontar para o **frontend**, não para a API. O frontend recebe o token do Google e o envia para `POST /auth/google` na API para validação.
+> **Nota**: O `@react-oauth/google` usa o fluxo de popup do Google Identity Services — não há redirect URI. A única configuração necessária é a **Authorized JavaScript origin**. O frontend recebe o ID token via callback JavaScript e o envia para `POST /auth/google` na API para validação.
+
+---
+
+### Parte 3 — Variáveis de ambiente do Frontend
+
+No Coolify, no serviço do **frontend** (`mappahub-web`), adicione as seguintes variáveis em **Environment Variables**:
+
+```env
+VITE_GOOGLE_MAPS_API_KEY=AIza...
+VITE_GOOGLE_CLIENT_ID=XXXXXXXXXX.apps.googleusercontent.com
+```
+
+| Variável | De onde vem |
+|---|---|
+| `VITE_GOOGLE_MAPS_API_KEY` | A mesma API Key criada na Parte 1 (usada para carregar o mapa e o autocomplete de endereços no browser) |
+| `VITE_GOOGLE_CLIENT_ID` | O Client ID OAuth criado na Parte 2 (exibido no botão "Entrar com Google") |
+
+> **Importante**: variáveis `VITE_*` são embutidas no bundle JavaScript durante o build. Após adicioná-las no Coolify, é necessário **fazer um novo deploy** do frontend para que elas sejam aplicadas.
