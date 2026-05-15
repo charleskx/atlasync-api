@@ -59,6 +59,7 @@ export async function placesRoutes(app: FastifyInstance) {
     const data = (await res.json()) as { status: string; predictions: GooglePrediction[] }
 
     if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      console.error(`[Places] Google status=${data.status} para input: "${input}"`)
       throw new AppError('PLACES_ERROR', 502, `Google Places retornou: ${data.status}`)
     }
 
@@ -103,6 +104,7 @@ export async function placesRoutes(app: FastifyInstance) {
     }
 
     if (data.status !== 'OK') {
+      console.error(`[Places] Google Places Details status=${data.status} para placeId: "${placeId}"`)
       throw new AppError('PLACES_ERROR', 404, `Place não encontrado: ${data.status}`)
     }
 
