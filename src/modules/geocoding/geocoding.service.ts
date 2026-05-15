@@ -29,7 +29,8 @@ async function geocodeWithGoogle(address: string): Promise<FullGeoResult | null>
   }
 
   if (data.status !== 'OK' || !data.results[0]) {
-    throw new Error(`Google Geocoding não encontrou resultados para "${address}" (status: ${data.status})`)
+    console.error(`[Geocoding] Google status=${data.status} para endereço: "${address}"`)
+    throw new Error(`Google Geocoding status ${data.status} para "${address}"`)
   }
 
   const { lat, lng } = data.results[0].geometry.location
