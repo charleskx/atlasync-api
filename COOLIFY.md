@@ -1,6 +1,6 @@
 # Deploy no Coolify — Guia Passo a Passo
 
-Este guia cobre o deploy completo da MappaHub API no Coolify, incluindo banco PostgreSQL com PostGIS, Redis, a API principal e o worker de filas — ambos configurados para reiniciar automaticamente em caso de falha.
+Este guia cobre o deploy completo da MappaHub API no Coolify, incluindo banco PostgreSQL, Redis, a API principal e o worker de filas.
 
 ---
 
@@ -21,15 +21,12 @@ Este guia cobre o deploy completo da MappaHub API no Coolify, incluindo banco Po
 
 ---
 
-## 2. Provisionar o PostgreSQL com PostGIS
+## 2. Provisionar o PostgreSQL
 
-A API requer a extensão **PostGIS** para armazenar coordenadas. Use a imagem `postgis/postgis` em vez da imagem padrão do Postgres.
+A API armazena coordenadas como colunas `latitude` e `longitude` do tipo `float`, portanto o **PostgreSQL padrão** que o Coolify oferece é suficiente — não é necessário usar PostGIS.
 
 1. Em `production`, clique em **New Resource** → **Database** → **PostgreSQL**
-2. Na tela de configuração, **troque a imagem Docker** para:
-   ```
-   postgis/postgis:15-3.4
-   ```
+2. Deixe a imagem padrão (`postgres:15` ou a que o Coolify sugerir)
 3. Defina:
    - **Database Name**: `atlasync`
    - **Username**: `atlasync`
@@ -129,7 +126,7 @@ openssl rand -base64 48
 
 ### 4.5 Configurar o Health Check
 
-O health check permite que o Docker/Coolify detecte quando a API travou ou parou de responder e reinicie automaticamente o container.
+O health check permite que o Coolify detecte quando a API travou ou parou de responder.
 
 Em **Advanced** → **Health Check**:
 
@@ -139,23 +136,7 @@ Em **Advanced** → **Health Check**:
 - **Retries**: `3`
 - **Start Period**: `30s` _(tempo de tolerância na inicialização antes de contar falhas)_
 
-Com essa configuração, se a API deixar de responder por 3 verificações consecutivas (90 segundos), o Docker reinicia o container automaticamente.
-
-### 4.6 Configurar o Restart Policy (auto-restart)
-
-Essa é a configuração que garante que a API sobe automaticamente caso o processo caia ou o servidor reinicie.
-
-Em **Advanced** → **Restart Policy**:
-
-- Selecione **`unless-stopped`**
-
-> **Diferença entre as opções:**
-> - `no` — nunca reinicia (padrão Docker, inadequado para produção)
-> - `always` — sempre reinicia, inclusive ao reiniciar o servidor manualmente pelo Coolify
-> - `unless-stopped` — reinicia sempre, exceto quando você para manualmente pelo painel **(recomendado)**
-> - `on-failure` — reinicia apenas em crash (não reinicia após reboot do servidor)
-
-### 4.7 Deploy
+### 4.6 Deploy
 
 1. Clique em **Save** e depois em **Deploy**
 2. Acompanhe os logs em tempo real na aba **Deployments**
@@ -163,11 +144,13 @@ Em **Advanced** → **Restart Policy**:
 
 ---
 
+---
+
 ## 5. Aplicar o schema no banco (primeira vez)
 
 Após o primeiro deploy, você precisa criar as tabelas. A maneira mais simples é adicionar um **Pre-Deploy Command** que roda automaticamente a cada deploy:
 
-Em **Advanced** → **Pre-Deploy Command**:
+Em **General** → **Pre-Deploy Command**:
 ```
 npm run db:push
 ```
@@ -241,7 +224,9 @@ Após criado, acesse o painel com as credenciais definidas. O super admin tem ac
 
 ## 7. Deploy do Worker de Filas
 
-O worker processa jobs de importação e geocoding em background. Ele precisa rodar como um **serviço separado** e, assim como a API, deve reiniciar automaticamente em caso de falha.
+O worker processa jobs de importação e geocoding em background. Ele roda como uma **aplicação separada no mesmo repositório**, com um start command diferente.
+
+> **Por que serviço separado?** O Coolify executa um único start command por aplicação. Para rodar `server.js` e `worker.js` simultaneamente, seria necessário um script de orquestração — o que mistura logs, recursos e ciclos de deploy. Manter dois serviços independentes facilita o diagnóstico de problemas e permite escalar cada um separadamente.
 
 ### 6.1 Criar o serviço
 
@@ -254,80 +239,69 @@ O worker processa jobs de importação e geocoding em background. Ele precisa ro
 - **Build Pack**: `Nixpacks`
 - **Install Command**: `npm ci`
 - **Build Command**: `npm run build`
-- **Start Command**: `node dist/worker.js`
-- **Port**: deixe **em branco** — o worker não expõe porta HTTP
+- **Start Command**: `npx pm2-runtime dist/worker.js`
+- **Port**: `3001`
+
+> O worker usa **PM2 como process manager** (`pm2-runtime`) para garantir que o processo Node.js reinicie automaticamente caso encerre inesperadamente — seja por crash, erro não tratado ou OOM. O `pm2-runtime` mantém o processo em foreground (necessário para o Docker), então o container continua de pé mesmo que o worker interno reinicie.
+
+> A porta `3001` é exigida pelo Coolify para subir a aplicação, mas o worker não serve tráfego HTTP — ela é apenas para satisfazer o requisito da plataforma. O domínio gerado automaticamente pelo Coolify pode ser ignorado.
 
 ### 6.3 Variáveis de ambiente
 
-Adicione as **mesmas variáveis de ambiente** da API. No mínimo as obrigatórias para o worker:
+Adicione as **mesmas variáveis de ambiente** da API — o worker compartilha a mesma base de código e pode disparar e-mails, integrar com serviços externos e executar queries. Todas as variáveis obrigatórias da API também são obrigatórias aqui:
 
 ```env
 NODE_ENV=production
 DATABASE_URL=postgresql://atlasync:SENHA@postgresql-XXXXX:5432/atlasync
 REDIS_URL=redis://default:SENHA@redis-XXXXX:6379
+JWT_SECRET=O_MESMO_VALOR_DA_API
+GOOGLE_MAPS_API_KEY=AIza...
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_USER=resend
+SMTP_PASS=re_...
+SMTP_FROM=MappaHub <noreply@mappahub.com.br>
+SENTRY_DSN=https://...@sentry.io/...
 ```
 
-As demais variáveis (Stripe, Google Maps, etc.) também devem ser incluídas pois o worker pode disparar e-mails e integrar com serviços externos durante o processamento de jobs.
+> **`JWT_SECRET`** é obrigatório — o código da API valida essa variável na inicialização, mesmo no worker.
 
 ### 6.4 Domínio
 
-Em **Domains**, **não adicione domínio** — o worker é um serviço interno sem endpoint HTTP.
+O Coolify gera um domínio automaticamente para o worker. Você pode ignorá-lo — o worker não serve tráfego HTTP público.
 
-### 6.5 Configurar o Restart Policy (auto-restart)
-
-Assim como a API, o worker deve reiniciar automaticamente.
-
-Em **Advanced** → **Restart Policy**:
-
-- Selecione **`unless-stopped`**
-
-> O worker não tem health check HTTP (não expõe porta), mas o Docker monitora o processo Node.js diretamente. Se o processo encerrar com qualquer código de saída diferente de zero — crash, erro não tratado, OOM — o Docker reinicia o container automaticamente graças à restart policy.
-
-### 6.6 Health Check do Worker
-
-Como o worker não tem endpoint HTTP, configure um health check baseado em **comando**:
-
-Em **Advanced** → **Health Check**:
-
-- **Type**: `Command`
-- **Command**:
-  ```
-  node -e "const { createClient } = require('redis'); const c = createClient({ url: process.env.REDIS_URL }); c.connect().then(() => { c.quit(); process.exit(0) }).catch(() => process.exit(1))"
-  ```
-- **Interval**: `60s`
-- **Timeout**: `10s`
-- **Retries**: `3`
-
-Esse comando verifica se o worker consegue se conectar ao Redis (dependência crítica). Se falhar 3 vezes consecutivas, o container é reiniciado.
-
-> **Alternativa simples**: se o Coolify não permitir health check por comando em Applications, deixe o campo em branco e confie apenas na restart policy. O Docker reiniciará o worker caso o processo encerre inesperadamente.
-
-### 6.7 Deploy
+### 6.5 Deploy
 
 1. Clique em **Save** e depois em **Deploy**
 2. Nos logs, você deve ver:
    ```
+   [PM2] Starting /app/dist/worker.js
    [worker] Import worker iniciado
    [worker] Geocoding worker iniciado
    ```
 3. O worker está pronto quando não aparecerem erros de conexão com Redis ou banco
 
+> **Verificando o PM2**: no terminal do container do worker (Coolify → mappahub-worker → Terminal), rode `npx pm2 list` para ver o status do processo e `npx pm2 logs` para ver os logs em tempo real.
+
 ---
 
-## 8. Verificar o Auto-restart
+## 8. Verificar o Auto-restart do Worker
 
-Para confirmar que ambos os serviços reiniciam automaticamente:
+Para confirmar que o PM2 está reiniciando o worker corretamente:
 
-1. No painel Coolify, vá ao serviço **mappahub-api**
-2. Em **Terminal**, execute:
+1. No painel Coolify, vá ao serviço **mappahub-worker** → **Terminal**
+2. Execute:
    ```bash
-   kill 1
+   npx pm2 list
    ```
-   Isso encerra o processo principal do container
-3. Aguarde 10-20 segundos e observe o container subir automaticamente na aba **Logs**
-4. Repita o teste no serviço **mappahub-worker**
+   Você deve ver o processo `worker` com status `online` e o campo `restarts` indicando quantas vezes ele foi reiniciado.
+3. Para forçar um crash e testar o restart:
+   ```bash
+   npx pm2 stop worker
+   npx pm2 start worker
+   ```
 
-> O tempo de reinicialização depende do Docker e do tempo de boot do Node.js (~5-10 segundos).
+> O container do worker fica de pé enquanto o PM2 estiver rodando. Se o processo Node.js cair, o PM2 o reinicia automaticamente sem derrubar o container.
 
 ---
 
@@ -424,7 +398,7 @@ O `CHANGELOG.md` segue o formato [Keep a Changelog](https://keepachangelog.com/p
 
 Ao criar a tag `v1.2.0`, o workflow extrai automaticamente o bloco `## [1.2.0]` e usa como corpo do GitHub Release.
 
-> **Ordem de deploy**: o worker é acionado logo após a API. Se precisar garantir que a API está saudável antes do worker subir, use o campo **Depends On** em **Advanced** do serviço worker no Coolify.
+> **Ordem de deploy**: o worker é acionado logo após a API. Os dois deploys são independentes — o worker não depende da API para funcionar, pois ambos acessam diretamente o banco e o Redis.
 
 ---
 
@@ -433,22 +407,18 @@ Ao criar a tag `v1.2.0`, o workflow extrai automaticamente o bloco `## [1.2.0]` 
 ```
 Coolify Project: mappahub
 └── Environment: production
-    ├── Database: postgis/postgis:15-3.4  ← porta 5432 (interno)
-    │             restart: unless-stopped
+    ├── Database: PostgreSQL 15           ← porta 5432 (interno)
     │
     ├── Database: Redis 7                 ← porta 6379 (interno)
-    │             restart: unless-stopped
     │
     ├── App: mappahub-api                 ← porta 3000, domínio público
-    │         start:   node dist/server.js
-    │         restart: unless-stopped
-    │         health:  GET /health (30s interval, 3 retries)
-    │         pre-deploy: npm run db:push
+    │         start:      node dist/server.js
+    │         pre-deploy: npm run db:push  (General → Pre-Deploy Command)
+    │         health:     GET /health (30s interval, 3 retries)
     │
-    └── App: mappahub-worker              ← sem porta, sem domínio
-              start:   node dist/worker.js
-              restart: unless-stopped
-              health:  redis ping via command (60s interval, 3 retries)
+    └── App: mappahub-worker              ← porta 3001 (ignorada), domínio ignorado
+              start:  npx pm2-runtime dist/worker.js
+              restart automático via PM2 (process manager interno ao container)
 ```
 
 ---
@@ -464,14 +434,15 @@ Certifique-se de usar a URL **interna** do Coolify (nome do container), não a U
 **Worker não processa jobs**
 Verifique se o `REDIS_URL` no worker aponta para o mesmo Redis da API. Acesse a aba **Logs** do serviço worker para ver erros de conexão. Confirme também que o worker está com status **Running** (não apenas **Deployed**).
 
-**Container não reinicia após crash**
-Confirme que a **Restart Policy** está definida como `unless-stopped` e não `no`. No terminal do servidor, você pode verificar com:
+**Worker para e não reinicia automaticamente**
+O worker usa `pm2-runtime` no start command para manter o processo vivo. Confirme que o start command está exatamente como `npx pm2-runtime dist/worker.js`. Se o PM2 não estiver instalado como dependência, adicione `pm2` ao `package.json`:
 ```bash
-docker inspect <container_id> | grep RestartPolicy
+npm install pm2
 ```
+No terminal do container, use `npx pm2 list` para ver o status e `npx pm2 logs` para os logs.
 
-**Worker cai em loop (restart loop)**
-Se o worker reiniciar repetidamente, há um erro na inicialização. Acesse **Logs** do serviço e procure o erro antes do shutdown. Causas comuns: `REDIS_URL` inválido, `DATABASE_URL` incorreto, ou variável de ambiente faltando.
+**Worker reinicia em loop**
+Se o worker reiniciar repetidamente, há um erro na inicialização. Acesse **Logs** do serviço e procure o erro antes do restart. Causas comuns: `REDIS_URL` inválido, `DATABASE_URL` incorreto, `JWT_SECRET` faltando, ou outro erro de inicialização do módulo.
 
 **E-mails não são enviados em produção**
 Verifique se as variáveis `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` e `SMTP_PASS` estão definidas. Em desenvolvimento, os e-mails são apenas logados no console — o envio real só acontece com `NODE_ENV=production`. Para testar o SMTP sem afetar usuários reais, use um serviço como [Mailtrap](https://mailtrap.io) apontando para o ambiente de staging.
