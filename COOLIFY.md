@@ -183,13 +183,35 @@ npx drizzle-kit push
 
 > ⚠️ **Irreversível.** Apaga todas as tabelas e dados. Use apenas em ambiente de testes ou quando precisar recomeçar do zero.
 
-No terminal do container da **API** (Coolify → mappahub-api → Terminal):
+No terminal do container da **API** (Coolify → mappahub-api → Terminal), rode o comando abaixo. **A ordem importa** — as tabelas filhas devem ser removidas antes das tabelas pai para não violar as foreign keys:
 
 ```bash
-npx drizzle-kit drop
+node -e "
+const { db } = require('./dist/config/database');
+const { sql } = require('drizzle-orm');
+db.execute(sql\`
+  DROP TABLE IF EXISTS
+    partner_values,
+    geocoding_logs,
+    ticket_messages,
+    refresh_tokens,
+    totp_recovery_codes,
+    import_jobs,
+    partners,
+    partner_columns,
+    tickets,
+    maps,
+    pin_types,
+    users,
+    subscriptions,
+    tenant_settings,
+    tenants
+  CASCADE
+\`).then(() => { console.log('Tabelas removidas.'); process.exit(0); });
+"
 ```
 
-O comando lista todas as tabelas e pede confirmação antes de apagar. Após confirmar, recrie o schema com:
+Após concluir, recrie o schema com:
 
 ```bash
 npm run db:push
