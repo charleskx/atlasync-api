@@ -183,14 +183,13 @@ npx drizzle-kit push
 
 > ⚠️ **Irreversível.** Apaga todas as tabelas e dados. Use apenas em ambiente de testes ou quando precisar recomeçar do zero.
 
-No terminal do container do **PostgreSQL** (Coolify → banco → Terminal), execute:
+No terminal do container da **API** (Coolify → mappahub-api → Terminal):
 
-```sql
-DROP SCHEMA public CASCADE;
-CREATE SCHEMA public;
+```bash
+npx drizzle-kit drop
 ```
 
-Depois, recrie as tabelas rodando no terminal da **API**:
+O comando lista todas as tabelas e pede confirmação antes de apagar. Após confirmar, recrie o schema com:
 
 ```bash
 npm run db:push
