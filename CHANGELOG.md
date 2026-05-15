@@ -9,6 +9,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-05-14
+
+### Removido
+- Colunas "Status Geocoding", "Origem" e "Criado em" removidas da exportação
+
 ## [0.1.8] - 2026-05-14
 
 ### Corrigido

@@ -13,9 +13,6 @@ const FIXED_COLUMNS: Record<string, string> = {
   state: 'Estado',
   visibility: 'Visibilidade',
   pinType: 'Tipo de Pin',
-  geocodeStatus: 'Status Geocoding',
-  source: 'Origem',
-  createdAt: 'Criado em',
 }
 
 type Requester = { id: string; role: string; tenantId: string }
@@ -61,9 +58,6 @@ export const exportService = {
         city: partners.city,
         state: partners.state,
         visibility: partners.visibility,
-        geocodeStatus: partners.geocodeStatus,
-        source: partners.source,
-        createdAt: partners.createdAt,
         pinTypeName: pinTypes.name,
       })
       .from(partners)
