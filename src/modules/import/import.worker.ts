@@ -50,7 +50,7 @@ export function createImportWorker() {
       let updated = 0
       let failed = 0
       const errorLog: Array<{ row: number; message: string }> = []
-      const processedKeys = new Set<string>()
+      const processedIds = new Set<string>()
 
       const pinTypeCache = await buildPinTypeCache(tenantId)
 
@@ -61,7 +61,10 @@ export function createImportWorker() {
             ? (pinTypeCache.get(row.pinType.toLowerCase()) ?? null)
             : null
 
-          const existing = await partnerRepository.findByExternalKey(row.externalKey, tenantId)
+          // On full mode also try matching by name for manually-created partners
+          const existing =
+            await partnerRepository.findByExternalKey(row.externalKey, tenantId) ??
+            (mode !== 'incremental' ? await partnerRepository.findByName(row.name, tenantId) : null)
 
           if (existing) {
             await partnerRepository.update(existing.id, tenantId, {
@@ -70,6 +73,8 @@ export function createImportWorker() {
               pinTypeId: pinTypeId ?? undefined,
               visibility: row.visibility as 'public' | 'internal' | undefined,
               dynamicValues: row.dynamicValues,
+              externalKey: row.externalKey,
+              source: 'import',
             })
             if (row.address !== existing.address) {
               await geocodingQueue.add('geocode', {
@@ -78,6 +83,7 @@ export function createImportWorker() {
                 tenantId,
               }, { priority: geocodingPriority })
             }
+            processedIds.add(existing.id)
             updated++
           } else {
             const partner = await partnerRepository.create(tenantId, {
@@ -95,10 +101,9 @@ export function createImportWorker() {
               address: partner.address,
               tenantId,
             }, { priority: geocodingPriority })
+            processedIds.add(partner.id)
             created++
           }
-
-          processedKeys.add(row.externalKey)
         } catch (err) {
           failed++
           errorLog.push({ row: i + 2, message: String(err) })
@@ -111,7 +116,7 @@ export function createImportWorker() {
 
       let removed = 0
       if (mode !== 'incremental') {
-        removed = await softDeleteStale(tenantId, processedKeys, jobId)
+        removed = await softDeleteStale(tenantId, processedIds, jobId)
       }
 
       await importRepository.update(jobId, {

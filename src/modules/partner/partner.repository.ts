@@ -118,6 +118,16 @@ export const partnerRepository = {
     })
   },
 
+  async findByName(name: string, tenantId: string) {
+    return db.query.partners.findFirst({
+      where: and(
+        eq(partners.name, name),
+        eq(partners.tenantId, tenantId),
+        isNull(partners.deletedAt),
+      ),
+    })
+  },
+
   async findAllImportedKeys(tenantId: string): Promise<string[]> {
     const rows = await db
       .select({ externalKey: partners.externalKey })
@@ -161,7 +171,7 @@ export const partnerRepository = {
   async update(
     id: string,
     tenantId: string,
-    data: UpdatePartnerInput & { pinTypeId?: string | null },
+    data: UpdatePartnerInput & { pinTypeId?: string | null; externalKey?: string; source?: string },
   ) {
     const updates: Partial<typeof partners.$inferInsert> = { updatedAt: new Date() }
     if (data.name !== undefined) updates.name = data.name
@@ -169,6 +179,8 @@ export const partnerRepository = {
     if ('pinTypeId' in data) updates.pinTypeId = data.pinTypeId ?? null
     if (data.visibility !== undefined) updates.visibility = data.visibility
     if ('notes' in data) updates.notes = data.notes ?? null
+    if (data.externalKey !== undefined) updates.externalKey = data.externalKey
+    if (data.source !== undefined) updates.source = data.source
 
     const [updated] = await db
       .update(partners)
@@ -209,32 +221,21 @@ export const partnerRepository = {
       .where(and(eq(partners.id, id), eq(partners.tenantId, tenantId)))
   },
 
-  /** Soft-deletes imported partners whose externalKey is NOT in `keepKeys`. */
-  async softDeleteByExternalKeys(tenantId: string, keepKeys: string[], jobId?: string) {
-    const excludeKeys = keepKeys
+  /** Soft-deletes ALL partners whose externalKey is NOT in `keepKeys` (full-replace mode). */
+  async softDeleteByExternalKeys(tenantId: string, keepIds: string[], jobId?: string) {
     const jobIdVal = jobId ?? null
-    if (excludeKeys.length === 0) {
+    if (keepIds.length === 0) {
       await db
         .update(partners)
         .set({ deletedAt: new Date(), updatedAt: new Date(), deletedByJobId: jobIdVal })
-        .where(
-          and(
-            eq(partners.tenantId, tenantId),
-            eq(partners.source, 'import'),
-            isNull(partners.deletedAt),
-          ),
-        )
+        .where(and(eq(partners.tenantId, tenantId), isNull(partners.deletedAt)))
       return
     }
     await db.execute(
       sql`UPDATE partners SET deleted_at = NOW(), updated_at = NOW(), deleted_by_job_id = ${jobIdVal}
           WHERE tenant_id = ${tenantId}
-            AND source = 'import'
             AND deleted_at IS NULL
-            AND external_key NOT IN (${sql.join(
-              excludeKeys.map(k => sql`${k}`),
-              sql`, `,
-            )})`,
+            AND id NOT IN (${sql.join(keepIds.map(k => sql`${k}`), sql`, `)})`,
     )
   },
 
