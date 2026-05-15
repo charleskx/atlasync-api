@@ -466,27 +466,49 @@ A MappaHub usa três serviços do Google que requerem chaves diferentes:
 
 | Serviço | Para quê | Variável |
 |---------|----------|----------|
+| Maps JavaScript API | Renderizar o mapa no frontend | `VITE_GOOGLE_MAPS_API_KEY` |
 | Geocoding API | Converter endereço em lat/lng | `GOOGLE_MAPS_API_KEY` |
 | Places API | Autocomplete de endereço | `GOOGLE_MAPS_API_KEY` (mesma chave) |
 | OAuth 2.0 | Login com Google | `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` |
 
 ---
 
-### Parte 1 — Criar a API Key (Geocoding + Places)
+### Parte 1 — Criar as API Keys
+
+Você precisará de **duas chaves separadas**: uma para o servidor (chamadas server-side) e outra para o frontend (chamadas do browser). Isso é necessário porque as restrições de segurança são diferentes para cada contexto.
+
+#### 1a. Ativar as APIs
 
 1. Acesse [console.cloud.google.com](https://console.cloud.google.com) e faça login com sua conta Google
 2. Clique em **Select a project** → **New Project** → dê o nome `MappaHub` → **Create**
 3. No menu lateral, vá em **APIs & Services** → **Library**
-4. Procure e ative as duas APIs abaixo (clique em cada uma → **Enable**):
-   - **Geocoding API**
-   - **Places API**
+4. Procure e ative as três APIs abaixo (clique em cada uma → **Enable**):
+   - **Maps JavaScript API** ← renderiza o mapa no browser
+   - **Geocoding API** ← converte endereços em coordenadas (server-side)
+   - **Places API** ← autocomplete de endereço (server-side e browser)
+
+#### 1b. Chave do servidor (`GOOGLE_MAPS_API_KEY`)
+
 5. Vá em **APIs & Services** → **Credentials** → **+ Create Credentials** → **API Key**
-6. Copie a chave gerada (formato `AIzaSy...`)
-7. Clique em **Edit API Key** para restringir o uso:
+6. Nomeie como `MappaHub Server`
+7. Clique em **Edit API Key**:
    - Em **Application restrictions**: selecione **IP addresses** e adicione o IP do seu servidor Coolify
    - Em **API restrictions**: selecione **Restrict key** → marque **Geocoding API** e **Places API**
    - Clique em **Save**
-8. Cole o valor em `GOOGLE_MAPS_API_KEY` no Coolify
+8. Cole o valor em `GOOGLE_MAPS_API_KEY` no Coolify (serviço da API)
+
+#### 1c. Chave do frontend (`VITE_GOOGLE_MAPS_API_KEY`)
+
+9. Crie outra chave: **+ Create Credentials** → **API Key**
+10. Nomeie como `MappaHub Frontend`
+11. Clique em **Edit API Key**:
+    - Em **Application restrictions**: selecione **HTTP referrers** e adicione:
+      ```
+      https://app.mappahub.com.br/*
+      ```
+    - Em **API restrictions**: selecione **Restrict key** → marque **Maps JavaScript API** e **Places API**
+    - Clique em **Save**
+12. Cole o valor em `VITE_GOOGLE_MAPS_API_KEY` no Coolify (serviço do frontend)
 
 > **Cobrança**: o Google oferece **$200 de crédito gratuito por mês**. Com esse crédito você tem ~40.000 geocodificações e ~70.000 buscas de autocomplete gratuitamente. Cadastre um cartão de crédito no Google Cloud — ele só é cobrado se ultrapassar o crédito.
 
