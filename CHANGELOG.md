@@ -9,6 +9,11 @@ e este projeto adere ao [Versionamento Semântico](https://semver.org/lang/pt-BR
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-05-14
+
+### Removido
+- Suporte a busca por CEP removido do geocoding (ViaCEP + postalcode); endereço completo é obrigatório para geocoding preciso
+
 ## [0.1.6] - 2026-05-14
 
 ### Corrigido
