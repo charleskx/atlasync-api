@@ -61,6 +61,7 @@ export async function placesRoutes(app: FastifyInstance) {
 
     type NewApiSuggestion = {
       placePrediction: {
+        place: string
         placeId: string
         text: { text: string }
         structuredFormat: {
@@ -71,8 +72,15 @@ export async function placesRoutes(app: FastifyInstance) {
     }
     const data = (await res.json()) as { suggestions?: NewApiSuggestion[] }
 
+    if (data.suggestions?.[0]) {
+      const first = data.suggestions[0].placePrediction
+      console.log(`[Places] Autocomplete first suggestion — place: "${first.place}", placeId: "${first.placeId}"`)
+    }
+
+    // "place" is the resource name "places/{id}" — we strip the prefix so the ID
+    // can be safely used as a URL path segment (no slashes) and re-prefixed in /details
     const results: AutocompleteResult[] = (data.suggestions ?? []).map(s => ({
-      placeId: s.placePrediction.placeId,
+      placeId: s.placePrediction.place.replace(/^places\//, ''),
       description: s.placePrediction.text.text,
       mainText: s.placePrediction.structuredFormat.mainText.text,
       secondaryText: s.placePrediction.structuredFormat.secondaryText?.text ?? '',
@@ -89,11 +97,14 @@ export async function placesRoutes(app: FastifyInstance) {
     const { placeId } = req.params as { placeId: string }
     const { sessiontoken } = req.query as { sessiontoken?: string }
 
-    const url = new URL(`https://places.googleapis.com/v1/places/${placeId}`)
-    url.searchParams.set('languageCode', 'pt-BR')
-    if (sessiontoken) url.searchParams.set('sessionToken', sessiontoken)
+    // placeId is just the ID part; reconstruct the resource name "places/{id}"
+    const googleUrl = new URL(`https://places.googleapis.com/v1/places/${placeId}`)
+    googleUrl.searchParams.set('languageCode', 'pt-BR')
+    if (sessiontoken) googleUrl.searchParams.set('sessionToken', sessiontoken)
 
-    const res = await fetch(url.toString(), {
+    console.log(`[Places] Details calling: ${googleUrl.toString()}`)
+
+    const res = await fetch(googleUrl.toString(), {
       headers: {
         'X-Goog-Api-Key': env.GOOGLE_MAPS_API_KEY,
         'X-Goog-FieldMask': 'id,formattedAddress,location,addressComponents',
@@ -102,7 +113,7 @@ export async function placesRoutes(app: FastifyInstance) {
 
     if (!res.ok) {
       const err = await res.text().catch(() => '')
-      console.error(`[Places] Details HTTP ${res.status} para placeId "${placeId}": ${err}`)
+      console.error(`[Places] Details HTTP ${res.status} para "${placeId}": ${err}`)
       throw new AppError('PLACES_ERROR', res.status === 404 ? 404 : 502, 'Erro ao consultar Google Places')
     }
 
