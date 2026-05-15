@@ -181,7 +181,34 @@ npx drizzle-kit push
 
 ---
 
-## 6. Deploy do Worker de Filas
+## 6. Criar o Super Admin (primeira vez)
+
+Após aplicar o schema, crie o usuário super admin para acessar o painel administrativo. O script lê as credenciais via variáveis de ambiente e é idempotente — se o e-mail já existir, ele não faz nada.
+
+### No terminal do container da API (via Coolify → Terminal):
+
+```bash
+SUPER_ADMIN_EMAIL=seu@email.com SUPER_ADMIN_PASSWORD=SenhaForte123 npm run db:seed-super-admin
+```
+
+Ou, se preferir definir as variáveis separadamente:
+
+```bash
+export SUPER_ADMIN_EMAIL=seu@email.com
+export SUPER_ADMIN_PASSWORD=SenhaForte123
+npm run db:seed-super-admin
+```
+
+> **O script cria automaticamente:**
+> - Um tenant interno `mappahub-internal` (se ainda não existir)
+> - Uma assinatura anual ativa para esse tenant
+> - O usuário com role `super_admin` e e-mail já verificado
+
+Após criado, acesse o painel com as credenciais definidas. O super admin tem acesso irrestrito a todos os tenants, importações e configurações do sistema.
+
+---
+
+## 7. Deploy do Worker de Filas
 
 O worker processa jobs de importação e geocoding em background. Ele precisa rodar como um **serviço separado** e, assim como a API, deve reiniciar automaticamente em caso de falha.
 
@@ -256,7 +283,7 @@ Esse comando verifica se o worker consegue se conectar ao Redis (dependência cr
 
 ---
 
-## 7. Verificar o Auto-restart
+## 8. Verificar o Auto-restart
 
 Para confirmar que ambos os serviços reiniciam automaticamente:
 
@@ -273,7 +300,7 @@ Para confirmar que ambos os serviços reiniciam automaticamente:
 
 ---
 
-## 8. Configurar o Webhook do Stripe
+## 9. Configurar o Webhook do Stripe
 
 Para que os eventos do Stripe cheguem à API:
 
@@ -291,25 +318,25 @@ Para que os eventos do Stripe cheguem à API:
 
 ---
 
-## 9. Deploy controlado por tag de versão (GitHub Actions)
+## 10. Deploy controlado por tag de versão (GitHub Actions)
 
 O deploy **não acontece a cada push na `main`**. Ele é acionado somente ao criar e enviar uma tag de versão (ex: `v1.2.0`). Isso garante que você controla exatamente o que vai para produção e quando.
 
-### 9.1 Desativar o Auto Deploy do Coolify
+### 10.1 Desativar o Auto Deploy do Coolify
 
 Por padrão o Coolify faz deploy a cada push na branch configurada. Desative isso:
 
 1. No serviço **mappahub-api** → **Settings** → desative **"Auto Deploy"**
 2. Repita no serviço **mappahub-worker**
 
-### 9.2 Copiar os webhooks de deploy do Coolify
+### 10.2 Copiar os webhooks de deploy do Coolify
 
 O GitHub Actions vai acionar o deploy chamando os webhooks do Coolify via HTTP.
 
 1. No serviço **mappahub-api** → **Settings** → **Deploy Webhook** → copie a URL
 2. No serviço **mappahub-worker** → **Settings** → **Deploy Webhook** → copie a URL
 
-### 9.3 Adicionar os secrets no GitHub
+### 10.3 Adicionar os secrets no GitHub
 
 No repositório do GitHub → **Settings → Secrets and variables → Actions → New repository secret**:
 
@@ -318,7 +345,7 @@ No repositório do GitHub → **Settings → Secrets and variables → Actions �
 | `COOLIFY_WEBHOOK_API` | URL do webhook do serviço `mappahub-api` |
 | `COOLIFY_WEBHOOK_WORKER` | URL do webhook do serviço `mappahub-worker` |
 
-### 9.4 Como fazer um deploy
+### 10.4 Como fazer um deploy
 
 ```bash
 # 1. Certifique-se de que a main está atualizada
@@ -346,7 +373,7 @@ O GitHub Actions (`.github/workflows/deploy.yml`) irá automaticamente:
 3. Acionar o deploy do `mappahub-api` via webhook do Coolify
 4. Acionar o deploy do `mappahub-worker` via webhook do Coolify
 
-### 9.5 Escrever o CHANGELOG
+### 10.5 Escrever o CHANGELOG
 
 O `CHANGELOG.md` segue o formato [Keep a Changelog](https://keepachangelog.com/pt-BR/1.0.0/). Mantenha sempre uma seção `[Unreleased]` no topo e preencha durante o desenvolvimento:
 
