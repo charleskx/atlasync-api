@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq'
 import { redis } from '../../config/redis'
 import type { GeocodingJobPayload } from '../../queues/geocoding.queue'
+import { emitToTenant } from '../../shared/sse-bus'
 import { partnerRepository } from '../partner/partner.repository'
 import { geocodingLogsRepository } from './geocoding-logs.repository'
 import { geocodeAddress } from './geocoding.service'
@@ -42,6 +43,10 @@ export function createGeocodingWorker() {
 
       // Update partner geocode status
       await partnerRepository.updateGeocode(partnerId, result, result ? 'done' : 'failed')
+
+      // Notify connected clients in real time
+      emitToTenant(tenantId, { type: 'geocoding-updated', partnerId })
+      emitToTenant(tenantId, { type: 'notification' })
 
       // Always record the attempt in logs — isolated so a DB error here never retries the geocode job
       try {
