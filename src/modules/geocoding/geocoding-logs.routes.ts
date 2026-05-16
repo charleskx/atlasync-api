@@ -4,6 +4,7 @@ import { db } from '../../config/database'
 import { authenticate } from '../../middlewares/authenticate'
 import { partners } from '../../db/schema'
 import { AppError } from '../../shared/errors'
+import { emitToTenant } from '../../shared/sse-bus'
 import { geocodingLogsRepository } from './geocoding-logs.repository'
 import { geocodeAddress } from './geocoding.service'
 
@@ -59,6 +60,9 @@ export async function geocodingLogsRoutes(app: FastifyInstance) {
       geocodedAt: new Date(),
       updatedAt: new Date(),
     }).where(eq(partners.id, partnerId))
+
+    emitToTenant(req.tenantId, { type: 'geocoding-updated', partnerId })
+    emitToTenant(req.tenantId, { type: 'notification' })
 
     return reply.send({ applied: true, lat: geo.lat, lng: geo.lng, city: geo.city, state: geo.state })
   })
