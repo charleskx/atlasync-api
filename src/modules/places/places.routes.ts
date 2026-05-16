@@ -89,13 +89,13 @@ export async function placesRoutes(app: FastifyInstance) {
     return { results }
   })
 
-  app.get('/details/:placeId', { preHandler: [authenticate] }, async req => {
+  app.get('/details', { preHandler: [authenticate] }, async req => {
     if (!env.GOOGLE_MAPS_API_KEY) {
       throw new AppError('PLACES_DISABLED', 503, 'Google Places não está configurado')
     }
 
-    const { placeId } = req.params as { placeId: string }
-    const { sessiontoken } = req.query as { sessiontoken?: string }
+    const { placeId, sessiontoken } = req.query as { placeId?: string; sessiontoken?: string }
+    if (!placeId) throw new AppError('VALIDATION_ERROR', 400, 'placeId obrigatório')
 
     // placeId is just the ID part; reconstruct the resource name "places/{id}"
     const googleUrl = new URL(`https://places.googleapis.com/v1/places/${placeId}`)
